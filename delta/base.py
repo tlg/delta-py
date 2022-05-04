@@ -403,6 +403,7 @@ class Delta(object):
                 new_embed[embed_type] = handler.invert(op_data, base_op_data)
                 inverted.retain(new_embed, **(op.invert(operator.get(
                     'attributes'), base_operator.get('attributes')) or {}))
+                return base_index + 1
 
             return base_index
 

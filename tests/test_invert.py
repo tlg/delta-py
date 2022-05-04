@@ -67,6 +67,10 @@ def embed_handler():
         def invert(a, b):
             return Delta(a).invert(Delta(b)).ops
 
+        @staticmethod
+        def transform(a, b, priority=False):
+            return Delta(a).transform(Delta(b), priority).ops
+
     Delta.register_embed('delta', DeltaHandler)
     yield
     Delta.unregister_embed('delta')
@@ -87,6 +91,47 @@ def test_invert_an_embed_change(embed_handler):
     base = Delta().insert({"delta": [{"insert": 'a'}]})
 
     expected = Delta().retain({"delta": [{"delete": 1}]})
+    inverted = delta.invert(base)
+    assert expected == inverted
+    assert base.compose(delta).compose(inverted) == base
+
+
+def test_invert_an_embed_change_with_numbers(embed_handler):
+    delta = Delta().retain(1).retain(
+        1, bold=True).retain({"delta": [{"insert": 'b'}]})
+    base = Delta().insert('\n\n').insert({"delta": [{"insert": 'a'}]})
+    expected = Delta().retain(1).retain(1, bold=None).retain({
+        "delta": [{"delete": 1}],
+    })
+    inverted = delta.invert(base)
+    assert expected == inverted
+    assert base.compose(delta).compose(inverted) == base
+
+
+def test_respects_base_attributes(embed_handler):
+    delta = Delta().delete(1).retain(1, header=2).retain(
+        {"delta": [{"insert": 'b'}]}, padding=10, margin=0)
+    base = Delta().insert('\n').insert('\n', header=1).insert(
+        {"delta": [{"insert": 'a'}]}, margin=10)
+
+    expected = Delta().insert('\n').retain(1, header=1).retain(
+        {
+            "delta": [{"delete": 1}],
+        },
+        padding=None, margin=10
+    )
+    inverted = delta.invert(base)
+    assert expected == inverted
+    assert base.compose(delta).compose(inverted) == base
+
+
+def test_works_with_multiple_embeds(embed_handler):
+    delta = Delta().retain(1).retain(
+        {"delta": [{"delete": 1}]}).retain({"delta": [{"delete": 1}]})
+    base = Delta().insert('\n').insert(
+        {"delta": [{"insert": 'a'}]}).insert({"delta": [{"insert": 'b'}]})
+    expected = Delta().retain(1).retain(
+        {"delta": [{"insert": 'a'}]}).retain({"delta": [{"insert": 'b'}]})
     inverted = delta.invert(base)
     assert expected == inverted
     assert base.compose(delta).compose(inverted) == base
