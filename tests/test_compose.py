@@ -73,12 +73,12 @@ def test_retain_and_delete():
 
     assert a.compose(b) == expected
 
-    
+
 def test_insert_in_middle_of_text():
     a = Delta().insert('Hello')
     b = Delta().retain(3).insert('X')
     expected = Delta().insert('HelXlo')
-    
+
     assert a.compose(b) == expected
 
 
@@ -94,10 +94,20 @@ def test_insert_and_delete_ordering():
 
 
 def test_insert_embed():
-    a = Delta().insert(1, src='http://quilljs.com/image.png')
+    a = Delta().insert({"embed": 1}, src='http://quilljs.com/image.png')
     b = Delta().retain(1, alt='logo')
-    expected = Delta().insert(1, src='http://quilljs.com/image.png', alt='logo')
-    
+    expected = Delta().insert(
+        {"embed": 1}, src='http://quilljs.com/image.png', alt='logo')
+
+    assert a.compose(b) == expected
+
+
+def test_retain_embed():
+    a = Delta().retain({"figure": True}, src='http://quilljs.com/image.png')
+    b = Delta().retain(1, alt='logo')
+    expected = Delta().retain(
+        {"figure": True}, src='http://quilljs.com/image.png', alt='logo')
+
     assert a.compose(b) == expected
 
 
@@ -142,16 +152,15 @@ def test_remove_all_embed_attributes():
 
 
 def test_immutability():
-    attr1 = { 'bold': True };
-    attr2 = { 'bold': True };
-    a1 = Delta().insert('Test', **attr1);
-    a2 = Delta().insert('Test', **attr1);
-    b1 = Delta().retain(1, color='red').delete(2);
-    b2 = Delta().retain(1, color='red').delete(2);
+    attr1 = {'bold': True}
+    attr2 = {'bold': True}
+    a1 = Delta().insert('Test', **attr1)
+    a2 = Delta().insert('Test', **attr1)
+    b1 = Delta().retain(1, color='red').delete(2)
+    b2 = Delta().retain(1, color='red').delete(2)
     expected = Delta().insert('T', color='red', bold=True).insert('t', **attr1)
-    
+
     assert a1.compose(b1) == expected
     assert a1 == a2
     assert b1 == b2
     assert attr1 == attr2
-

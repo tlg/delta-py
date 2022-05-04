@@ -1,4 +1,5 @@
 from delta import op
+import math
 
 
 def test_length():
@@ -104,7 +105,7 @@ def test_iterator():
     for i in range(10):
         iterator.next()
         assert iterator.peek_type() == 'retain'
-        assert iterator.peek_length() is None
+        assert iterator.peek_length() is math.inf
 
     iterator.reset()
     for operator, next in zip(ops, iterator):
@@ -131,7 +132,7 @@ def test_iterator_next_length():
     assert iterator.next()['delete']
 
     for i in range(10):
-        assert iterator.next()['retain'] is None
+        assert iterator.next()['retain'] is math.inf
 
 
 def test_empty_iterator():
@@ -141,7 +142,7 @@ def test_empty_iterator():
     assert iterator.ops == []
     assert iterator.has_next() is False
     assert iterator.peek() is None
-    assert iterator.peek_length() is None
+    assert iterator.peek_length() is math.inf
     assert iterator.peek_type() is 'retain'
 
 

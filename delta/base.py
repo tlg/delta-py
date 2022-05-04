@@ -56,7 +56,7 @@ class Delta(object):
         return self.push({'delete': length})
 
     def retain(self, length, **attrs):
-        if length <= 0:
+        if isinstance(length, (int, float)) and length <= 0:
             return self
         new_op = {'retain': length}
         if attrs:
@@ -89,8 +89,10 @@ class Delta(object):
                 last_op['insert'] += new_op['insert']
                 return self
 
-            if isinstance(new_op.get('retain'), int) and isinstance(last_op.get('retain'), int):
+            if isinstance(new_op.get('retain'), (int, float)) and isinstance(last_op.get('retain'), (int, float)):
                 last_op['retain'] += new_op['retain']
+                if isinstance(new_op.get('attributes'), dict):
+                    last_op['attributes'] = new_op.get('attributes')
                 return self
 
         self.ops.insert(index, new_op)
@@ -194,32 +196,56 @@ class Delta(object):
     def compose(self, other):
         self_it = self.iterator()
         other_it = other.iterator()
-        delta = self.__class__()
+        ops = []
+        first_other = other_it.peek()
+
+        if first_other and isinstance(first_other.get('retain'), (int, float)) and first_other.get('attributes') is None:
+            first_left = first_other.get('retain')
+            while self_it.peek_type() == 'insert' and self_it.peek_length() <= first_left:
+                first_left -= self_it.peek_length()
+                ops.append(self_it.next())
+            if (first_other.get('retain') - first_left > 0):
+                other_it.next(first_other.get('retain') - first_left)
+
+        delta = self.__class__(ops)
         while self_it.has_next() or other_it.has_next():
             if other_it.peek_type() == 'insert':
                 delta.push(other_it.next())
             elif self_it.peek_type() == 'delete':
                 delta.push(self_it.next())
             else:
-                length = smallest(self_it.peek_length(),
-                                  other_it.peek_length())
+                length = min(self_it.peek_length(),
+                             other_it.peek_length())
                 self_op = self_it.next(length)
                 other_op = other_it.next(length)
                 if 'retain' in other_op:
                     new_op = {}
-                    if 'retain' in self_op:
-                        new_op['retain'] = length
-                    elif 'insert' in self_op:
-                        new_op['insert'] = self_op['insert']
+                    if isinstance(self_op.get('retain'), (int, float)):
+                        new_op['retain'] = isinstance(self_op.get(
+                            'retain'), (int, float)) and length or other_op.get('retain')
+                    else:
+                        if isinstance(other_op.get('retain'), (int, float)):
+                            if self_op.get('retain') is None:
+                                new_op['insert'] = self_op.get('insert')
+                            else:
+                                new_op['retain'] = self_op.get('retain')
+                        else:
+                            new_op['insert'] = self_op.get('insert')
                     # Preserve null when composing with a retain, otherwise remove it for inserts
                     attributes = op.compose(self_op.get('attributes'), other_op.get(
-                        'attributes'), isinstance(self_op.get('retain'), int))
+                        'attributes'), isinstance(self_op.get('retain'), (int, float)))
                     if (attributes):
                         new_op['attributes'] = attributes
                     delta.push(new_op)
+
+                    if not other_it.has_next() and delta.ops[-1] == new_op:
+                        rest = Delta(self_it.rest())
+
+                        print("optimize", rest)
+                        return delta.concat(rest).chop()
                 # Other op should be delete, we could be an insert or retain
                 # Insert + delete cancels out
-                elif op.type(other_op) == 'delete' and 'retain' in self_op:
+                elif op.type(other_op) == 'delete' and isinstance(self_op.get('retain'), (int, float)):
                     delta.push(other_op)
         return delta.chop()
 
@@ -315,10 +341,10 @@ class Delta(object):
         def fn(base_index, operator):
             if op.type(operator) == 'insert':
                 inverted.delete(op.length(operator))
-            elif op.type(operator) == 'retain' and operator.get("attributes") is None:
+            elif isinstance(operator.get('retain'), (int, float)) and operator.get("attributes") is None:
                 inverted.retain(operator.get("retain"))
                 return base_index + operator.get("retain")
-            elif op.type(operator) == 'delete' or (op.type(operator) == 'retain' and operator.get("attributes")):
+            elif op.type(operator) == 'delete' or (isinstance(operator.get('retain'), (int, float)) and operator.get("attributes")):
                 length = operator.get("delete") or operator.get("retain")
 
                 for base_operator in base[base_index:base_index + length]:
@@ -334,7 +360,7 @@ class Delta(object):
         return inverted.chop()
 
     def transform(self, other, priority=False):
-        if isinstance(other, int):
+        if isinstance(other, (int, float)):
             return self.transform_position(other, priority)
 
         self_it = self.iterator()
@@ -347,8 +373,8 @@ class Delta(object):
             elif other_it.peek_type() == 'insert':
                 delta.push(other_it.next())
             else:
-                length = smallest(self_it.peek_length(),
-                                  other_it.peek_length())
+                length = min(self_it.peek_length(),
+                             other_it.peek_length())
                 self_op = self_it.next(length)
                 other_op = other_it.next(length)
                 if self_op.get('delete'):

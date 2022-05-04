@@ -1,4 +1,5 @@
 import copy
+import math
 
 
 def compose(a, b, keep_null=False):
@@ -87,8 +88,10 @@ def length_of(op):
     typ = type_of(op)
     if typ == 'delete':
         return op['delete']
-    elif typ == 'retain':
+    elif isinstance(op.get('retain'), (int, float)):
         return op['retain']
+    elif isinstance(op.get('retain'), dict) and op.get('retain'):
+        return 1
     elif isinstance(op.get('insert'), str):
         return len(op['insert'])
     else:
@@ -100,7 +103,7 @@ def type_of(op):
         return None
     if isinstance(op.get('delete'), int):
         return 'delete'
-    if isinstance(op.get('retain'), int):
+    if isinstance(op.get('retain'), int) or (isinstance(op.get('retain'), dict) and op.get('retain')):
         return 'retain'
     return 'insert'
 
@@ -120,16 +123,18 @@ class Iterator(object):
         self.offset = 0
 
     def has_next(self):
-        return self.peek_length() is not None
+        return self.peek_length() < math.inf
 
     def next(self, length=None):
-        offset = self.offset
+        if not length:
+            length = math.inf
 
         op = self.peek()
-        op_type = type_of(op)
         if op is None:
-            return {'retain': None}
+            return {'retain': math.inf}
 
+        op_type = type_of(op)
+        offset = self.offset
         op_length = length_of(op)
         if (length is None or length >= op_length - offset):
             length = op_length - offset
@@ -147,8 +152,10 @@ class Iterator(object):
             if result_op['attributes'].get('color') in ('unset', 'windowtext'):
                 del result_op['attributes']['color']
 
-        if op_type == 'retain':
+        if isinstance(op.get('retain'), (int, float)):
             result_op['retain'] = length
+        elif isinstance(op.get('retain'), dict) and op.get('retain'):
+            result_op['retain'] = op.get('retain')
         elif isinstance(op.get('insert'), str):
             result_op['insert'] = op['insert'][offset:offset+length]
         else:
@@ -176,14 +183,29 @@ class Iterator(object):
     def peek_length(self):
         next_op = self.peek()
         if next_op is None:
-            return None
+            return math.inf
         return length_of(next_op) - self.offset
 
     def peek_type(self):
         op = self.peek()
-        if op is None:
-            return 'retain'
-        return type_of(op)
+        if op:
+            return type_of(op)
+
+        return 'retain'
+
+    def rest(self):
+        if not self.has_next():
+            return []
+        elif self.offset == 0:
+            return self.ops[self.index:]
+        else:
+            offset = self.offset
+            index = self.index
+            next = self.next()
+            rest = self.ops[self.index:]
+            self.offset = offset
+            self.index = index
+            return [next] + rest
 
 
 length = length_of
