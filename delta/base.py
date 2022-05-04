@@ -49,11 +49,11 @@ handlers = {}
 class Delta(object):
 
     @staticmethod
-    def register_handler(embed_type, handler):
+    def register_embed(embed_type, handler):
         handlers[embed_type] = handler
 
     @staticmethod
-    def unregister_handler(embed_type):
+    def unregister_embed(embed_type):
         if embed_type in handlers:
             handlers.pop(embed_type)
 
