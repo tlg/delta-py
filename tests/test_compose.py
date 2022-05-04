@@ -164,3 +164,104 @@ def test_immutability():
     assert a1 == a2
     assert b1 == b2
     assert attr1 == attr2
+
+
+def test_retain_start_optimization():
+    a = Delta().insert('A', bold=True).insert('B').insert('C', bold=True).delete(1)
+    b = Delta().retain(3).insert('D')
+    expected = Delta().insert('A', bold=True).insert(
+        'B').insert('C', bold=True).insert('D').delete(1)
+
+    assert a.compose(b) == expected
+
+
+def test_retain_start_optimization_split():
+    a = Delta().insert('A', bold=True).insert(
+        'B').insert('C', bold=True).retain(5).delete(1)
+    b = Delta().retain(4).insert('D')
+    expected = Delta().insert('A', bold=True).insert(
+        'B').insert('C', bold=True).retain(1).insert('D').retain(4).delete(1)
+
+    assert a.compose(b) == expected
+
+
+def test_retain_end_optimization():
+    a = Delta().insert('A', bold=True).insert(
+        'B').insert('C', bold=True)
+    b = Delta().delete(1)
+    expected = Delta().insert(
+        'B').insert('C', bold=True)
+
+    assert a.compose(b) == expected
+
+
+def test_retain_end_optimization_join():
+    a = Delta().insert('A', bold=True).insert(
+        'B').insert('C', bold=True).insert('D').insert('E', bold=True).insert('F')
+    b = Delta().retain(1).delete(1)
+    expected = Delta().insert('AC', bold=True).insert(
+        'D').insert('E', bold=True).insert('F')
+
+    assert a.compose(b) == expected
+
+
+@pytest.fixture
+def embed_handler():
+
+    class DeltaHandler:
+        @staticmethod
+        def compose(a, b, keep_null=False):
+            return Delta(a).compose(Delta(b)).ops
+
+        @staticmethod
+        def invert(a, b):
+            return Delta(a).invert(Delta(b)).ops
+
+    Delta.register_embed('delta', DeltaHandler)
+    yield
+    Delta.unregister_embed('delta')
+
+
+def test_retain_an_embed_with_a_number(embed_handler):
+    a = Delta().insert({"delta": [{"insert": "a"}]})
+    b = Delta().retain(1, bold=True)
+
+    expected = Delta().insert({"delta": [{"insert": "a"}]}, bold=True)
+    assert a.compose(b) == expected
+
+
+def test_retain_an_embed_with_an_embed(embed_handler):
+    a = Delta().insert({"delta": [{"insert": "a"}]})
+    b = Delta().retain({"delta": [{"insert": "b"}]})
+
+    expected = Delta().insert({"delta": [{"insert": "ba"}]})
+    assert a.compose(b) == expected
+
+
+def test_keeps_other_delete_when_this_op_is_a_retain(embed_handler):
+    a = Delta().retain({"delta": [{"insert": "a"}]})
+    b = Delta().insert('\n').delete(1)
+
+    expected = Delta().insert('\n').delete(1)
+    assert a.compose(b) == expected
+
+
+def test_retain_an_embed_with_another_type_of_embed(embed_handler):
+    with pytest.raises(Exception):
+        a = Delta().insert({"delta": [{"insert": "a"}]})
+        b = Delta().retain({"otherdelta": [{"insert": "b"}]})
+        a.compose(b)
+
+
+def test_retain_a_string_with_an_embed(embed_handler):
+    with pytest.raises(Exception):
+        a = Delta().insert({"insert": "a"})
+        b = Delta().retain({"delta": [{"insert": "b"}]})
+        a.compose(b)
+
+
+def test_retain_embeds_without_a_handler(embed_handler):
+    with pytest.raises(Exception):
+        a = Delta().insert({"mydelta": [{"insert": "a"}]})
+        b = Delta().retain({"mydelta": [{"insert": "b"}]})
+        a.compose(b)

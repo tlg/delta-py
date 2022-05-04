@@ -7,7 +7,7 @@ def test_insert_and_insert():
     b1 = Delta().insert('B')
     a2 = Delta(a1)
     b2 = Delta(b1)
-    
+
     expected1 = Delta().retain(1).insert('B')
     expected2 = Delta().insert('B')
 
@@ -155,38 +155,75 @@ def test_insert_before_position():
     delta = Delta().insert('A')
     assert delta.transform(2) == 3
 
+
 def test_insert_after_position():
     delta = Delta().retain(2).insert('A')
     assert delta.transform(1) == 1
+
 
 def test_insert_at_position():
     delta = Delta().retain(2).insert('A')
     assert delta.transform(2, True) == 2
     assert delta.transform(2, False) == 3
 
+
 def test_delete_before_position():
     delta = Delta().delete(2)
     assert delta.transform(4) == 2
+
 
 def test_delete_after_position():
     delta = Delta().retain(4).delete(2)
     assert delta.transform(2) == 2
 
+
 def test_delete_across_position():
     delta = Delta().retain(1).delete(4)
     assert delta.transform(2) == 1
+
 
 def test_insert_and_delete_before_position():
     delta = Delta().retain(2).insert('A').delete(2)
     assert delta.transform(4) == 3
 
+
 def test_insert_before_and_delete_across_position():
     delta = Delta().retain(2).insert('A').delete(4)
     assert delta.transform(4) == 3
+
 
 def test_delete_before_and_delete_across_position():
     delta = Delta().delete(1).retain(1).delete(4)
     assert delta.transform(4) == 1
 
 
+@pytest.fixture
+def embed_handler():
 
+    class DeltaHandler:
+        @staticmethod
+        def compose(a, b, keep_null=False):
+            return Delta(a).compose(Delta(b)).ops
+
+        @staticmethod
+        def invert(a, b):
+            return Delta(a).invert(Delta(b)).ops
+
+        @staticmethod
+        def transform(a, b, priority=False):
+            return Delta(a).transform(Delta(b), priority).ops
+    Delta.register_embed('delta', DeltaHandler)
+    yield
+    Delta.unregister_embed('delta')
+
+
+def test_transform_an_embed_change(embed_handler):
+    a = Delta().retain({"delta": [{"insert": 'a'}]})
+    b = Delta().retain({"delta": [{"insert": 'b'}]})
+
+    expected1 = Delta().retain({
+        "delta": [{"retain": 1}, {"insert": 'b'}],
+    })
+    expected2 = Delta().retain({"delta": [{"insert": 'b'}]})
+    assert a.transform(b, True) == expected1
+    assert a.transform(b) == expected2

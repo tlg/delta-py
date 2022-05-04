@@ -43,7 +43,6 @@ def test_retai_on_delta_different_attributes():
 
 
 def test_combined():
-    print(Delta().retain(2).insert("123").delete(2))
     delta = Delta().retain(2).delete(2).insert("AB", **{"italic": True}).retain(
         2, **{"italic": None, "bold": True}).retain(2, **{"color": "red"}).delete(1)
     base = Delta().insert("123", **{"bold": True}).insert(
@@ -53,4 +52,41 @@ def test_combined():
 
     inverted = delta.invert(base)
     assert inverted == expected
+    assert base.compose(delta).compose(inverted) == base
+
+
+@pytest.fixture
+def embed_handler():
+
+    class DeltaHandler:
+        @staticmethod
+        def compose(a, b, keep_null=False):
+            return Delta(a).compose(Delta(b)).ops
+
+        @staticmethod
+        def invert(a, b):
+            return Delta(a).invert(Delta(b)).ops
+
+    Delta.register_embed('delta', DeltaHandler)
+    yield
+    Delta.unregister_embed('delta')
+
+
+def test_invert_a_normal_change(embed_handler):
+    delta = Delta().retain(1, bold=True)
+    base = Delta().insert({"delta": [{"insert": 'a'}]})
+
+    expected = Delta().retain(1, bold=None)
+    inverted = delta.invert(base)
+    assert expected == inverted
+    assert base.compose(delta).compose(inverted) == base
+
+
+def test_invert_an_embed_change(embed_handler):
+    delta = Delta().retain({"delta": [{"insert": 'b'}]})
+    base = Delta().insert({"delta": [{"insert": 'a'}]})
+
+    expected = Delta().retain({"delta": [{"delete": 1}]})
+    inverted = delta.invert(base)
+    assert expected == inverted
     assert base.compose(delta).compose(inverted) == base
