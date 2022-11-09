@@ -5,7 +5,7 @@ def compose(a, b, keep_null=False):
     """
     Compose two operations into one.
 
-    ``keep_null`` [default=false] is a boolean that controls whether None/Null 
+    ``keep_null`` [default=false] is a boolean that controls whether None/Null
     attributes are retrained.
     """
     if a is None:
@@ -14,7 +14,8 @@ def compose(a, b, keep_null=False):
         b = {}
 
     # deep copy b, but get rid of None values if keep_null is falsey
-    attributes = dict((k, copy.deepcopy(v)) for k, v in b.items() if keep_null or v is not None)
+    attributes = dict((k, copy.deepcopy(v))
+                      for k, v in b.items() if keep_null or v is not None)
 
     for k, v in a.items():
         if k not in b:
@@ -43,6 +44,23 @@ def diff(a, b):
     return attributes or None
 
 
+def invert(attr, base):
+    attr = attr or {}
+    base = base or {}
+
+    base_inverted = {}
+
+    for k in base:
+        if base.get(k) != attr.get(k) and k in attr:
+            base_inverted[k] = base.get(k)
+
+    for k in attr:
+        if attr.get(k) != base.get(k) and k not in base:
+            base_inverted[k] = None
+
+    return base_inverted
+
+
 def transform(a, b, priority=True):
     """
     Return the transformation from operation a to b.
@@ -56,7 +74,7 @@ def transform(a, b, priority=True):
 
     if not priority:
         return b or None
-    
+
     attributes = {}
     for k, v in b.items():
         if k not in a:
@@ -87,14 +105,12 @@ def type_of(op):
     return 'insert'
 
 
-
-
-
 class Iterator(object):
     """
     An iterator that enables itself to break off operations
     to exactly the length needed via the ``next()`` method.
     """
+
     def __init__(self, ops=[]):
         self.ops = ops
         self.reset()
@@ -112,8 +128,8 @@ class Iterator(object):
         op = self.peek()
         op_type = type_of(op)
         if op is None:
-            return { 'retain': None }
-        
+            return {'retain': None}
+
         op_length = length_of(op)
         if (length is None or length >= op_length - offset):
             length = op_length - offset
@@ -123,7 +139,7 @@ class Iterator(object):
             self.offset += length
 
         if op_type == 'delete':
-            return { 'delete': length }
+            return {'delete': length}
 
         result_op = {}
         if op.get('attributes'):
@@ -169,6 +185,7 @@ class Iterator(object):
             return 'retain'
         return type_of(op)
 
+
 length = length_of
 type = type_of
-iterator = lambda x: Iterator(x)
+def iterator(x): return Iterator(x)

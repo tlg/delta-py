@@ -18,10 +18,12 @@ DIFF_DELETE = -1
 def merge(a, b):
     return copy.deepcopy(a or {}).update(b or {})
 
+
 def differ(a, b, timeout=1):
     differ = diff_match_patch.diff_match_patch()
     differ.Diff_Timeout = timeout
     return differ.diff_main(a, b)
+
 
 def smallest(*parts):
     return min(filter(lambda x: x is not None, parts))
@@ -51,7 +53,7 @@ class Delta(object):
     def delete(self, length):
         if length <= 0:
             return self
-        return self.push({'delete': length});
+        return self.push({'delete': length})
 
     def retain(self, length, **attrs):
         if length <= 0:
@@ -69,7 +71,7 @@ class Delta(object):
         except IndexError:
             self.ops.append(new_op)
             return self
-        
+
         if op.type(new_op) == op.type(last_op) == 'delete':
             last_op['delete'] += new_op['delete']
             return self
@@ -127,7 +129,8 @@ class Delta(object):
                 else:
                     parts.append(NULL_CHARACTER)
             else:
-                raise ValueError("document() can only be called on Deltas that have only insert ops")
+                raise ValueError(
+                    "document() can only be called on Deltas that have only insert ops")
         return "".join(parts)
 
     def __iter__(self):
@@ -145,6 +148,9 @@ class Delta(object):
             if index.step is not None:
                 print(index)
                 raise ValueError("no support for step slices")
+
+        else:
+            raise TypeError("Invalid argument type.")
 
         if (start is not None and start < 0) or (stop is not None and stop < 0):
             raise ValueError("no support for negative indexing.")
@@ -195,7 +201,8 @@ class Delta(object):
             elif self_it.peek_type() == 'delete':
                 delta.push(self_it.next())
             else:
-                length = smallest(self_it.peek_length(), other_it.peek_length())
+                length = smallest(self_it.peek_length(),
+                                  other_it.peek_length())
                 self_op = self_it.next(length)
                 other_op = other_it.next(length)
                 if 'retain' in other_op:
@@ -205,7 +212,8 @@ class Delta(object):
                     elif 'insert' in self_op:
                         new_op['insert'] = self_op['insert']
                     # Preserve null when composing with a retain, otherwise remove it for inserts
-                    attributes = op.compose(self_op.get('attributes'), other_op.get('attributes'), isinstance(self_op.get('retain'), int))
+                    attributes = op.compose(self_op.get('attributes'), other_op.get(
+                        'attributes'), isinstance(self_op.get('retain'), int))
                     if (attributes):
                         new_op['attributes'] = attributes
                     delta.push(new_op)
@@ -214,20 +222,20 @@ class Delta(object):
                 elif op.type(other_op) == 'delete' and 'retain' in self_op:
                     delta.push(other_op)
         return delta.chop()
-    
+
     def diff(self, other):
         """
         Returns a diff of two *documents*, which is defined as a delta
-        with only inserts. 
+        with only inserts.
         """
         if self.ops == other.ops:
             return self.__class__()
-        
+
         self_doc = self.document()
         other_doc = other.document()
         self_it = self.iterator()
         other_it = other.iterator()
-        
+
         delta = self.__class__()
         for code, text in differ(self_doc, other_doc):
             length = len(text)
@@ -241,16 +249,19 @@ class Delta(object):
                     self_it.next(op_length)
                     delta.delete(op_length)
                 elif code == DIFF_EQUAL:
-                    op_length = min(self_it.peek_length(), other_it.peek_length(), length)
+                    op_length = min(self_it.peek_length(),
+                                    other_it.peek_length(), length)
                     self_op = self_it.next(op_length)
                     other_op = other_it.next(op_length)
                     if self_op.get('insert') == other_op.get('insert'):
-                        attributes = op.diff(self_op.get('attributes'), other_op.get('attributes'))
+                        attributes = op.diff(self_op.get(
+                            'attributes'), other_op.get('attributes'))
                         delta.retain(op_length, **(attributes or {}))
                     else:
                         delta.push(other_op).delete(op_length)
                 else:
-                    raise RuntimeError("Diff library returned unknown op code: %r", code)
+                    raise RuntimeError(
+                        "Diff library returned unknown op code: %r", code)
                 if op_length == 0:
                     return
                 length -= op_length
@@ -298,6 +309,30 @@ class Delta(object):
         if len(line) > 0:
             yield line, {}, i
 
+    def invert(self, base):
+        inverted = Delta()
+
+        def fn(base_index, operator):
+            if op.type(operator) == 'insert':
+                inverted.delete(op.length(operator))
+            elif op.type(operator) == 'retain' and operator.get("attributes") is None:
+                inverted.retain(operator.get("retain"))
+                return base_index + operator.get("retain")
+            elif op.type(operator) == 'delete' or (op.type(operator) == 'retain' and operator.get("attributes")):
+                length = operator.get("delete") or operator.get("retain")
+
+                for base_operator in base[base_index:base_index + length]:
+                    if op.type(operator) == 'delete':
+                        inverted.push(base_operator)
+                    elif op.type(operator) == 'retain' and operator.get("attributes"):
+                        inverted.retain(op.length(base_operator), **(op.invert(
+                            operator.get("attributes"), base_operator.get("attributes"))))
+                return base_index + length
+            return base_index
+
+        reduce(fn, self.ops, 0)
+        return inverted.chop()
+
     def transform(self, other, priority=False):
         if isinstance(other, int):
             return self.transform_position(other, priority)
@@ -312,7 +347,8 @@ class Delta(object):
             elif other_it.peek_type() == 'insert':
                 delta.push(other_it.next())
             else:
-                length = smallest(self_it.peek_length(), other_it.peek_length())
+                length = smallest(self_it.peek_length(),
+                                  other_it.peek_length())
                 self_op = self_it.next(length)
                 other_op = other_it.next(length)
                 if self_op.get('delete'):
@@ -322,7 +358,8 @@ class Delta(object):
                     delta.push(other_op)
                 else:
                     # We retain either their retain or insert
-                    delta.retain(length, **(op.transform(self_op.get('attributes'), other_op.get('attributes'), priority) or {}))
+                    delta.retain(length, **(op.transform(self_op.get('attributes'),
+                                                         other_op.get('attributes'), priority) or {}))
 
         return delta.chop()
 

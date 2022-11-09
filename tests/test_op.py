@@ -7,6 +7,7 @@ def test_length():
     assert op.length({'insert': 'python'}) == 6
     assert op.length({'insert': 2}) == 1
 
+
 def test_type():
     assert op.type({'delete': 5}) == 'delete'
     assert op.type({'retain': 5}) == 'retain'
@@ -16,33 +17,51 @@ def test_type():
 
 
 def test_compose():
-    attributes = { 'bold': True, 'color': 'red' }
+    attributes = {'bold': True, 'color': 'red'}
 
     assert op.compose(None, attributes) == attributes
     assert op.compose(attributes, None) == attributes
     assert op.compose(None, None) is None
 
-    assert op.compose(attributes, {'italic': True}) == { 'bold': True, 'color': 'red', 'italic': True }
-    assert op.compose(attributes, {'color': 'blue', 'bold': False}) == { 'bold': False, 'color': 'blue' }
-    assert op.compose(attributes, {'bold': None}) == { 'color': 'red' }
+    assert op.compose(attributes, {'italic': True}) == {
+        'bold': True, 'color': 'red', 'italic': True}
+    assert op.compose(attributes, {'color': 'blue', 'bold': False}) == {
+        'bold': False, 'color': 'blue'}
+    assert op.compose(attributes, {'bold': None}) == {'color': 'red'}
 
     assert op.compose(attributes, {'bold': None, 'color': None}) is None
     assert op.compose(attributes, {'italic': None}) == attributes
 
+
 def test_diff():
-    format = { 'bold': True, 'color': 'red' }
+    format = {'bold': True, 'color': 'red'}
 
     assert op.diff(None, format) == format
     assert op.diff(format, None) == {'bold': None, 'color': None}
     assert op.diff(format, format) == None
 
-    assert op.diff(format, { 'bold': True, 'italic': True, 'color': 'red' }) == {'italic': True}
-    assert op.diff(format, { 'bold': True }) == {'color': None}
-    assert op.diff(format, { 'bold': True, 'color': 'blue' }) == {'color': 'blue'}
+    assert op.diff(format, {'bold': True, 'italic': True, 'color': 'red'}) == {
+        'italic': True}
+    assert op.diff(format, {'bold': True}) == {'color': None}
+    assert op.diff(format, {'bold': True, 'color': 'blue'}) == {
+        'color': 'blue'}
+
+
+def test_invert():
+    assert op.invert(None, {"bold": True}) == {}
+    assert op.invert({"bold": True}, None) == {"bold": None}
+    assert op.invert(None, None) == {}
+    assert op.invert({"bold": True}, {"italic": True}) == {"bold": None}
+    assert op.invert({"bold": None}, {"bold": True}) == {"bold": True}
+    assert op.invert({"color": "red"}, {"color": "blue"}) == {"color": "blue"}
+    assert op.invert({"color": "red"}, {"color": "red"}) == {}
+    assert op.invert({"bold": True, "italic": None,
+                      "color": "red", "size": "12px"}, {"font": 'serif', "italic": True, "color": 'blue', "size": '12px'}) == {"bold": None, "italic": True, "color": 'blue'}
+
 
 def test_transform():
-    left = { 'bold': True, 'color': 'red', 'font': None }
-    right = { 'color': 'blue', 'font': 'serif', 'italic': True };
+    left = {'bold': True, 'color': 'red', 'font': None}
+    right = {'color': 'blue', 'font': 'serif', 'italic': True}
 
     assert op.transform(None, left, False) == left
     assert op.transform(left, None, False) is None
@@ -106,7 +125,7 @@ def test_iterator_next_length():
 
     assert iterator.next(2)['insert'] == 'll'
     assert iterator.next()['insert'] == 'o'
-    
+
     assert iterator.next()['retain']
     assert iterator.next()['insert']
     assert iterator.next()['delete']
@@ -137,4 +156,3 @@ def test_next():
     iterator.next(1)
     assert iterator.index == 1
     assert iterator.peek() == ops[1]
-    
