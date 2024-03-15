@@ -219,7 +219,7 @@ class Delta(object):
         for operator in self:
             if op.type(operator) == 'delete':
                 length -= operator['delete']
-            else:
+            elif op.type(operator) == 'insert':
                 length += op.length(operator)
         return length
 

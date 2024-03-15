@@ -90,6 +90,11 @@ def test_concat():
     assert delta == original
 
 
+def test_change_length():
+    delta = Delta().insert('AB', bold=True).retain(2, bold=None).delete(1)
+    assert delta.change_length() == 1
+
+
 def test_slice():
     # start
     delta = Delta().retain(2).insert('A')
