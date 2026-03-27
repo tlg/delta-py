@@ -3,13 +3,17 @@
 from setuptools import setup
 
 setup(
-    name='quill-delta',
-    version='1.1',
-    description='Python port of the quill-delta library for rich text OT',
+    name='elium-delta',
+    version='2.0',
+    description='Python port of elium-delta: rich text OT with block move operations',
     packages=['delta'],
     license='MIT License',
     install_requires=['diff-match-patch'],
     tests_require=['pytest'],
+    project_urls={
+        'Bug Reports': 'https://github.com/whatever-company/elium-delta-py/issues',
+        'Source': 'https://github.com/whatever-company/elium-delta-py',
+    },
     classifiers=[
         'Development Status :: 5 - Stable',
         'Intended Audience :: Developers',

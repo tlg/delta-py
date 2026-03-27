@@ -1,6 +1,6 @@
-# Delta (Python Port)
+# elium-delta-py
 
-Python port of the [quill-delta](https://github.com/quilljs/delta) library for rich text operational transformation.
+Python port of [elium-delta](https://github.com/whatever-company/elium-delta), a fork of [quill-delta](https://github.com/quilljs/delta) extended with block-level move operations and a two-stream change bridge.
 
 Implements the same OT primitives as the TypeScript version — `compose`, `transform`, `invert`, `diff` — with full support for custom embed handlers, block-level move operations, and the two-stream change bridge. Both implementations share the same [JSON test fixtures](tests/fixtures/) to guarantee identical behavior, including UTF-16 code unit length semantics.
 
@@ -192,4 +192,4 @@ assert block_boundaries(doc) == [0, 6, 12]
 pytest tests/
 ```
 
-Test cases in `tests/fixtures/` are shared with the TypeScript implementation. Non-fixture tests cover immutability, callbacks, and Python-specific behavior.
+Test cases in `tests/fixtures/` are shared with the TypeScript [elium-delta](https://github.com/whatever-company/elium-delta) implementation. Non-fixture tests cover immutability, callbacks, and Python-specific behavior.
