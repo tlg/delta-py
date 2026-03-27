@@ -324,6 +324,13 @@ def _delta_only_change(from_state, to_state):
     return {'delta': labeled_state_to_delta(from_state).diff(labeled_state_to_delta(to_state)), 'blockDelta': BlockDelta()}
 
 
+def _lower_exactly_or_fallback(initial_state, exact_final_state, candidate, newline='\n'):
+    candidate_final_state = _final_state_of(_resolve_change_against_state(initial_state, candidate, newline), newline)
+    if _same_document_state(candidate_final_state, exact_final_state):
+        return candidate
+    return _delta_only_change(initial_state, exact_final_state)
+
+
 # ── Replay with insert edge ──
 
 def _replay_resolved_delta_with_insert_edge(state, resolved, insert_edge, newline='\n'):
@@ -556,7 +563,8 @@ def _prepare_and_lower(initial_state, move_initial_state, moves, exact_final_sta
     try:
         prepared = _prepare_resolved_block_moves(initial_state, move_initial_state, moves, newline, choose_destination_edge)
         if _same_document_state(prepared['finalState'], exact_final_state):
-            return _lower_prepared_move_program(prepared, newline)
+            return _lower_exactly_or_fallback(
+                initial_state, exact_final_state, _lower_prepared_move_program(prepared, newline), newline)
     except Exception:
         pass
     return _delta_only_change(initial_state, exact_final_state)
@@ -601,7 +609,9 @@ def compose_change(document, first, second, newline='\n'):
     combined_post_delta = replay_resolved_delta(first_resolved['postDeltaState'], second_resolved['resolvedDelta'])
     combined_moves = first_resolved['resolvedMoves'] + second_resolved['resolvedMoves']
     if not combined_moves:
-        return _lower_change(base_state, combined_post_delta, sequential_final, newline)
+        return _lower_exactly_or_fallback(
+            base_state, sequential_final,
+            _lower_change(base_state, combined_post_delta, sequential_final, newline), newline)
 
     return _prepare_and_lower(base_state, combined_post_delta, combined_moves, sequential_final, newline)
 
@@ -639,12 +649,15 @@ def transform_change(left, right, document, priority=False, newline='\n'):
         left_final, right_resolved['resolvedDelta'], 'after' if priority else 'before')
 
     if not right_resolved['resolvedMoves']:
-        return _lower_change(left_final, transformed_post_delta, transformed_post_delta, newline)
+        return _lower_exactly_or_fallback(
+            left_final, transformed_post_delta,
+            _lower_change(left_final, transformed_post_delta, transformed_post_delta, newline), newline)
 
     prepared = _prepare_resolved_block_moves(
         left_final, transformed_post_delta, right_resolved['resolvedMoves'], newline,
         lambda _s, _m, _i: 'after' if priority else 'before')
-    return _lower_prepared_move_program(prepared, newline)
+    return _lower_exactly_or_fallback(
+        left_final, prepared['finalState'], _lower_prepared_move_program(prepared, newline), newline)
 
 
 def invert_change(document, change, newline='\n'):
