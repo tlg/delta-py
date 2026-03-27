@@ -284,7 +284,7 @@ class Delta:
 
         delta = self.__class__()
         for code, text in differ(self_doc, other_doc):
-            length = len(text)
+            length = op.utf16_len(text)
             while length > 0:
                 op_length = 0
                 if code == DIFF_INSERT:

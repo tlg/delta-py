@@ -149,5 +149,19 @@
       "priority": false,
       "expected": []
     }
+    ,{
+      "name": "insert before emoji position",
+      "a": [{ "insert": "X" }],
+      "b": [{ "retain": 3 }, { "insert": "Y" }],
+      "priority": false,
+      "expected": [{ "retain": 4 }, { "insert": "Y" }]
+    },
+    {
+      "name": "delete across emoji",
+      "a": [{ "retain": 1 }, { "delete": 2 }],
+      "b": [{ "retain": 1 }, { "retain": 2, "attributes": { "bold": true } }],
+      "priority": true,
+      "expected": []
+    }
   ]
 }

@@ -142,8 +142,8 @@
         "gapIndex": 2,
         "expected": {
           "wholeLinePrefixUnits": 2,
-          "trailingPartialUnits": 1,
-          "afterEdgeBlockExpressible": false
+          "trailingPartialUnits": 0,
+          "afterEdgeBlockExpressible": true
         }
       },
       {
@@ -153,8 +153,8 @@
         "gapIndex": 2,
         "expected": {
           "wholeLinePrefixUnits": 0,
-          "trailingPartialUnits": 2,
-          "afterEdgeBlockExpressible": false
+          "trailingPartialUnits": 0,
+          "afterEdgeBlockExpressible": true
         }
       }
     ]

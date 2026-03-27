@@ -2,6 +2,36 @@ import copy
 import math
 
 
+# ── UTF-16 length utilities ──
+# Delta uses UTF-16 code unit lengths to match JavaScript string semantics.
+# Characters above U+FFFF (e.g. emoji) count as 2 code units.
+
+def utf16_len(s):
+    """Return the UTF-16 code unit length of a Python string."""
+    return sum(2 if ord(c) > 0xFFFF else 1 for c in s)
+
+
+def utf16_slice(s, offset, length):
+    """Slice a Python string by UTF-16 code unit offset and length."""
+    # Convert UTF-16 offset to Python char index
+    py_start = 0
+    remaining = offset
+    while remaining > 0 and py_start < len(s):
+        units = 2 if ord(s[py_start]) > 0xFFFF else 1
+        remaining -= units
+        py_start += 1
+    # Convert UTF-16 length to Python char count from that position
+    py_end = py_start
+    remaining = length
+    while remaining > 0 and py_end < len(s):
+        units = 2 if ord(s[py_end]) > 0xFFFF else 1
+        remaining -= units
+        py_end += 1
+    return s[py_start:py_end]
+
+
+# ── Attribute operations ──
+
 def compose(a, b, keep_null=False):
     """
     Compose two attribute sets into one.
@@ -76,6 +106,8 @@ def transform(a, b, priority=True):
     return attributes or None
 
 
+# ── Op helpers ──
+
 def length_of(op):
     if isinstance(op.get('delete'), int):
         return op['delete']
@@ -84,7 +116,7 @@ def length_of(op):
     if isinstance(op.get('retain'), dict) and op.get('retain'):
         return 1
     if isinstance(op.get('insert'), str):
-        return len(op['insert'])
+        return utf16_len(op['insert'])
     return 1
 
 
@@ -102,6 +134,7 @@ class Iterator:
     """
     A stateful iterator over ops that can split operations to exactly
     the length needed via the ``next()`` method.
+    Lengths and offsets are in UTF-16 code units.
     """
 
     def __init__(self, ops=None):
@@ -146,7 +179,7 @@ class Iterator:
         elif isinstance(op.get('retain'), dict) and op.get('retain'):
             result_op['retain'] = op['retain']
         elif isinstance(op.get('insert'), str):
-            result_op['insert'] = op['insert'][offset:offset + length]
+            result_op['insert'] = utf16_slice(op['insert'], offset, length)
         else:
             assert offset == 0
             assert length == 1

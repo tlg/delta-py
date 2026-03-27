@@ -39,6 +39,17 @@
         "expected": [{ "insert": "Test" }, { "retain": 4, "attributes": { "bold": true } }]
       }
     ],
+    "changeLength": [
+      {
+        "name": "mixed",
+        "input": [
+          { "insert": "AB", "attributes": { "bold": true } },
+          { "retain": 2, "attributes": { "bold": null } },
+          { "delete": 1 }
+        ],
+        "expected": 1
+      }
+    ],
     "length": [
       {
         "name": "document",
@@ -54,17 +65,16 @@
           { "delete": 1 }
         ],
         "expected": 6
-      }
-    ],
-    "changeLength": [
+      },
       {
-        "name": "mixed",
-        "input": [
-          { "insert": "AB", "attributes": { "bold": true } },
-          { "retain": 2, "attributes": { "bold": null } },
-          { "delete": 1 }
-        ],
-        "expected": 1
+        "name": "emoji",
+        "input": [{ "insert": "😀" }],
+        "expected": 2
+      },
+      {
+        "name": "emoji mixed",
+        "input": [{ "insert": "a😀b" }, { "retain": 1 }],
+        "expected": 5
       }
     ],
     "slice": [
@@ -113,6 +123,13 @@
         "start": 1,
         "end": 2,
         "expected": [{ "insert": "B", "attributes": { "bold": true } }]
+      },
+      {
+        "name": "slice around emoji",
+        "input": [{ "insert": "a😀b" }],
+        "start": 1,
+        "end": 3,
+        "expected": [{ "insert": "😀" }]
       }
     ]
   }

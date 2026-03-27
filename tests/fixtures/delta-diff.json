@@ -94,6 +94,24 @@
       "b": [{ "insert": "A" }, { "insert": "B", "attributes": { "bold": true } }],
       "expected": []
     }
+    ,{
+      "name": "emoji insert",
+      "a": [{ "insert": "A" }],
+      "b": [{ "insert": "A😀" }],
+      "expected": [{ "retain": 1 }, { "insert": "😀" }]
+    },
+    {
+      "name": "emoji delete",
+      "a": [{ "insert": "A😀B" }],
+      "b": [{ "insert": "AB" }],
+      "expected": [{ "retain": 1 }, { "delete": 2 }]
+    },
+    {
+      "name": "emoji retain with format",
+      "a": [{ "insert": "😀" }],
+      "b": [{ "insert": "😀", "attributes": { "bold": true } }],
+      "expected": [{ "retain": 2, "attributes": { "bold": true } }]
+    }
   ],
   "errorTests": [
     {

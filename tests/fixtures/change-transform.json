@@ -175,7 +175,7 @@
       "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }] },
       "right": { "delta": [{ "retain": 2 }, { "insert": "X\n" }], "blockDelta": [] },
       "priority": true,
-      "expectedResult": [{ "insert": "A\nC\nX\nB\n" }]
+      "expectedResult": [{ "insert": "A\nX\nC\nB\n" }]
     },
     {
       "name": "keeps whole-line inserts at the moved source-end boundary outside the slice",
@@ -199,7 +199,7 @@
       "left": { "delta": [], "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }] },
       "right": { "delta": [{ "retain": 1 }, { "insert": "\n" }], "blockDelta": [] },
       "priority": true,
-      "expectedResult": [{ "insert": "D\nA\nB\nC\n" }]
+      "expectedResult": [{ "insert": "A\nD\nB\nC\n" }]
     },
     {
       "name": "transforms deletes of the entire moved slice so the move normalizes away",
@@ -234,7 +234,7 @@
         ]
       },
       "priority": false,
-      "expectedResult": [{ "insert": "C\nD\nX\nA\nB\n" }],
+      "expectedResult": [{ "insert": "X\nC\nD\nA\nB\n" }],
       "verifyConvergence": true
     },
     {
@@ -243,7 +243,7 @@
       "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
       "right": { "delta": [{ "insert": "\n" }], "blockDelta": [] },
       "priority": true,
-      "expectedResult": [{ "insert": "B\n\nA\nC\n" }]
+      "expectedResult": [{ "insert": "\nB\nA\nC\n" }]
     },
     {
       "name": "orders destination-boundary inserts by transform priority (priority=false)",
@@ -254,44 +254,47 @@
       "expectedResult": [{ "insert": "\nB\nA\nC\n" }]
     },
     {
-      "name": "falls back to delta-only when source-start after edge consumed by partial text",
+      "name": "preserves structural move lowering when source-start after edge is consumed by partial text",
       "base": [{ "insert": "A\nB\nC\n" }],
       "left": { "delta": [{ "retain": 2 }, { "insert": "x" }], "blockDelta": [] },
       "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
       "priority": true,
-      "expectedEmptyBlockDelta": true,
-      "verifyConvergence": true
-    },
-    {
-      "name": "falls back to delta-only when destination gap consumed by partial text",
-      "base": [{ "insert": "A\nB\nC\n" }],
-      "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
-      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
-      "priority": true,
-      "expectedEmptyBlockDelta": true,
+      "expectedHasBlockDelta": true,
       "expectedResult": [{ "insert": "xB\nA\nC\n" }],
       "verifyConvergence": true
     },
     {
-      "name": "falls back to delta-only when source-start after edge consumed by inline embed",
+      "name": "preserves structural move lowering when destination gap is consumed by partial text",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
+      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "priority": true,
+      "expectedHasBlockDelta": true,
+      "expectedResult": [{ "insert": "B\nxA\nC\n" }],
+      "verifyConvergence": true
+    },
+    {
+      "name": "preserves structural move lowering when source-start after edge is consumed by an inline embed",
       "base": [{ "insert": "A\nB\nC\n" }],
       "left": { "delta": [{ "retain": 2 }, { "insert": { "image": "inline" } }], "blockDelta": [] },
       "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
       "priority": true,
-      "expectedEmptyBlockDelta": true,
+      "expectedHasBlockDelta": true,
+      "expectedResult": [{ "insert": { "image": "inline" } }, { "insert": "B\nA\nC\n" }],
       "verifyConvergence": true
     },
     {
-      "name": "falls back to delta-only when after edge after a W·P gap fragment",
+      "name": "preserves structural move lowering when after edge crosses a W·P gap fragment",
       "base": [{ "insert": "A\nB\nC\n" }],
       "left": { "delta": [{ "retain": 2 }, { "insert": "X\ny" }], "blockDelta": [] },
       "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
       "priority": true,
-      "expectedEmptyBlockDelta": true,
+      "expectedHasBlockDelta": true,
+      "expectedResult": [{ "insert": "yB\nA\nX\nC\n" }],
       "verifyConvergence": true
     },
     {
-      "name": "falls back to delta-only when step 2 of multi-move needs non-expressible after edge",
+      "name": "preserves structural move lowering when step 2 of a multi-move sequence needs the after edge",
       "base": [{ "insert": "A\nB\nC\nD\n" }],
       "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
       "right": {
@@ -302,7 +305,8 @@
         ]
       },
       "priority": true,
-      "expectedEmptyBlockDelta": true,
+      "expectedHasBlockDelta": true,
+      "expectedResult": [{ "insert": "C\nxA\nB\nD\n" }],
       "verifyConvergence": true
     },
     {
@@ -319,7 +323,7 @@
       "verifyConvergenceBothPriorities": true
     },
     {
-      "name": "preserves the transform law for mixed-vs-mixed W·P fallback cases",
+      "name": "preserves the transform law for the supported mixed-vs-mixed W·P branch",
       "base": [{ "insert": "A\nB\nC\n" }],
       "left": {
         "delta": [{ "insert": "X\n" }],
@@ -329,7 +333,9 @@
         "delta": [{ "retain": 2 }, { "insert": "X\ny" }],
         "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }]
       },
-      "verifyConvergenceBothPriorities": true
+      "priority": true,
+      "expectedResult": [{ "insert": "yB\nA\nX\nC\nX\n" }],
+      "verifyConvergence": true
     },
     {
       "name": "tracks repeated identical block contents by lineage, not by content text",
