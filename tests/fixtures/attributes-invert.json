@@ -1,0 +1,54 @@
+{
+  "module": "AttributeMap",
+  "method": "invert",
+  "tests": [
+    {
+      "name": "attributes is undefined",
+      "attributes": null,
+      "base": { "bold": true },
+      "expected": {}
+    },
+    {
+      "name": "base is undefined",
+      "attributes": { "bold": true },
+      "base": null,
+      "expected": { "bold": null }
+    },
+    {
+      "name": "both undefined",
+      "attributes": null,
+      "base": null,
+      "expected": {}
+    },
+    {
+      "name": "merge",
+      "attributes": { "bold": true },
+      "base": { "italic": true },
+      "expected": { "bold": null }
+    },
+    {
+      "name": "null",
+      "attributes": { "bold": null },
+      "base": { "bold": true },
+      "expected": { "bold": true }
+    },
+    {
+      "name": "replace",
+      "attributes": { "color": "red" },
+      "base": { "color": "blue" },
+      "expected": { "color": "blue" }
+    },
+    {
+      "name": "noop",
+      "attributes": { "color": "red" },
+      "base": { "color": "red" },
+      "expected": {}
+    },
+    {
+      "name": "combined",
+      "attributes": { "bold": true, "italic": null, "color": "red", "size": "12px" },
+      "base": { "font": "serif", "italic": true, "color": "blue", "size": "12px" },
+      "expected": { "bold": null, "italic": true, "color": "blue" }
+    }
+  ]
+}

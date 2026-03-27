@@ -1,0 +1,47 @@
+{
+  "module": "Block",
+  "method": "projectBlocks",
+  "tests": [
+    {
+      "name": "projects text lines",
+      "document": [{ "insert": "A\nB\n" }],
+      "expected": [
+        { "delta": [{ "insert": "A" }], "attributes": {} },
+        { "delta": [{ "insert": "B" }], "attributes": {} }
+      ]
+    },
+    {
+      "name": "projects empty lines",
+      "document": [{ "insert": "A\n\nB\n" }],
+      "expected": [
+        { "delta": [{ "insert": "A" }], "attributes": {} },
+        { "delta": [], "attributes": {} },
+        { "delta": [{ "insert": "B" }], "attributes": {} }
+      ]
+    },
+    {
+      "name": "keeps inline embeds inside the same block",
+      "document": [{ "insert": "A" }, { "insert": { "image": "inline" } }, { "insert": "B\n" }],
+      "expected": [
+        {
+          "delta": [{ "insert": "A" }, { "insert": { "image": "inline" } }, { "insert": "B" }],
+          "attributes": {}
+        }
+      ]
+    },
+    {
+      "name": "projects embed-only lines as blocks",
+      "document": [
+        { "insert": "A\n" },
+        { "insert": { "image": "block" } },
+        { "insert": "\n", "attributes": { "align": "center" } },
+        { "insert": "B\n" }
+      ],
+      "expected": [
+        { "delta": [{ "insert": "A" }], "attributes": {} },
+        { "delta": [{ "insert": { "image": "block" } }], "attributes": { "align": "center" } },
+        { "delta": [{ "insert": "B" }], "attributes": {} }
+      ]
+    }
+  ]
+}

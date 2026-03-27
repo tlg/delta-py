@@ -1,0 +1,153 @@
+{
+  "module": "Delta",
+  "method": "transform",
+  "tests": [
+    {
+      "name": "insert + insert (priority)",
+      "a": [{ "insert": "A" }],
+      "b": [{ "insert": "B" }],
+      "priority": true,
+      "expected": [{ "retain": 1 }, { "insert": "B" }]
+    },
+    {
+      "name": "insert + insert (no priority)",
+      "a": [{ "insert": "A" }],
+      "b": [{ "insert": "B" }],
+      "priority": false,
+      "expected": [{ "insert": "B" }]
+    },
+    {
+      "name": "insert + retain",
+      "a": [{ "insert": "A" }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "priority": true,
+      "expected": [{ "retain": 1 }, { "retain": 1, "attributes": { "bold": true, "color": "red" } }]
+    },
+    {
+      "name": "insert + delete",
+      "a": [{ "insert": "A" }],
+      "b": [{ "delete": 1 }],
+      "priority": true,
+      "expected": [{ "retain": 1 }, { "delete": 1 }]
+    },
+    {
+      "name": "delete + insert",
+      "a": [{ "delete": 1 }],
+      "b": [{ "insert": "B" }],
+      "priority": true,
+      "expected": [{ "insert": "B" }]
+    },
+    {
+      "name": "delete + retain",
+      "a": [{ "delete": 1 }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "priority": true,
+      "expected": []
+    },
+    {
+      "name": "delete + delete",
+      "a": [{ "delete": 1 }],
+      "b": [{ "delete": 1 }],
+      "priority": true,
+      "expected": []
+    },
+    {
+      "name": "retain + insert",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "insert": "B" }],
+      "priority": true,
+      "expected": [{ "insert": "B" }]
+    },
+    {
+      "name": "retain + retain (priority)",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "priority": true,
+      "expected": [{ "retain": 1, "attributes": { "bold": true } }]
+    },
+    {
+      "name": "retain + retain (reverse priority)",
+      "a": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "b": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "priority": true,
+      "expected": []
+    },
+    {
+      "name": "retain + retain without priority",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "priority": false,
+      "expected": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }]
+    },
+    {
+      "name": "retain + retain without priority (reverse)",
+      "a": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "b": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "priority": false,
+      "expected": [{ "retain": 1, "attributes": { "color": "blue" } }]
+    },
+    {
+      "name": "retain + delete",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "delete": 1 }],
+      "priority": true,
+      "expected": [{ "delete": 1 }]
+    },
+    {
+      "name": "alternating edits (a transforms b, no priority)",
+      "a": [{ "retain": 2 }, { "insert": "si" }, { "delete": 5 }],
+      "b": [{ "retain": 1 }, { "insert": "e" }, { "delete": 5 }, { "retain": 1 }, { "insert": "ow" }],
+      "priority": false,
+      "expected": [{ "retain": 1 }, { "insert": "e" }, { "delete": 1 }, { "retain": 2 }, { "insert": "ow" }]
+    },
+    {
+      "name": "alternating edits (b transforms a, no priority)",
+      "a": [{ "retain": 1 }, { "insert": "e" }, { "delete": 5 }, { "retain": 1 }, { "insert": "ow" }],
+      "b": [{ "retain": 2 }, { "insert": "si" }, { "delete": 5 }],
+      "priority": false,
+      "expected": [{ "retain": 2 }, { "insert": "si" }, { "delete": 1 }]
+    },
+    {
+      "name": "conflicting appends (priority)",
+      "a": [{ "retain": 3 }, { "insert": "aa" }],
+      "b": [{ "retain": 3 }, { "insert": "bb" }],
+      "priority": true,
+      "expected": [{ "retain": 5 }, { "insert": "bb" }]
+    },
+    {
+      "name": "conflicting appends (no priority)",
+      "a": [{ "retain": 3 }, { "insert": "bb" }],
+      "b": [{ "retain": 3 }, { "insert": "aa" }],
+      "priority": false,
+      "expected": [{ "retain": 3 }, { "insert": "aa" }]
+    },
+    {
+      "name": "prepend + append (no priority)",
+      "a": [{ "insert": "aa" }],
+      "b": [{ "retain": 3 }, { "insert": "bb" }],
+      "priority": false,
+      "expected": [{ "retain": 5 }, { "insert": "bb" }]
+    },
+    {
+      "name": "prepend + append (reverse, no priority)",
+      "a": [{ "retain": 3 }, { "insert": "bb" }],
+      "b": [{ "insert": "aa" }],
+      "priority": false,
+      "expected": [{ "insert": "aa" }]
+    },
+    {
+      "name": "trailing deletes with differing lengths (a transforms b)",
+      "a": [{ "retain": 2 }, { "delete": 1 }],
+      "b": [{ "delete": 3 }],
+      "priority": false,
+      "expected": [{ "delete": 2 }]
+    },
+    {
+      "name": "trailing deletes with differing lengths (b transforms a)",
+      "a": [{ "delete": 3 }],
+      "b": [{ "retain": 2 }, { "delete": 1 }],
+      "priority": false,
+      "expected": []
+    }
+  ]
+}

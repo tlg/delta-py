@@ -1,0 +1,35 @@
+{
+  "module": "Delta",
+  "method": "transform",
+  "embedHandler": "delta",
+  "tests": [
+    {
+      "name": "transform an embed change with number (priority)",
+      "a": [{ "retain": 1 }],
+      "b": [{ "retain": { "delta": [{ "insert": "b" }] } }],
+      "priority": true,
+      "expected": [{ "retain": { "delta": [{ "insert": "b" }] } }]
+    },
+    {
+      "name": "transform an embed change with number (no priority)",
+      "a": [{ "retain": 1 }],
+      "b": [{ "retain": { "delta": [{ "insert": "b" }] } }],
+      "priority": false,
+      "expected": [{ "retain": { "delta": [{ "insert": "b" }] } }]
+    },
+    {
+      "name": "transform an embed change (priority)",
+      "a": [{ "retain": { "delta": [{ "insert": "a" }] } }],
+      "b": [{ "retain": { "delta": [{ "insert": "b" }] } }],
+      "priority": true,
+      "expected": [{ "retain": { "delta": [{ "retain": 1 }, { "insert": "b" }] } }]
+    },
+    {
+      "name": "transform an embed change (no priority)",
+      "a": [{ "retain": { "delta": [{ "insert": "a" }] } }],
+      "b": [{ "retain": { "delta": [{ "insert": "b" }] } }],
+      "priority": false,
+      "expected": [{ "retain": { "delta": [{ "insert": "b" }] } }]
+    }
+  ]
+}

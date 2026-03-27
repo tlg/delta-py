@@ -1,4 +1,3 @@
-from cgitb import handler
 import copy
 import diff_match_patch
 
@@ -23,7 +22,9 @@ def merge(a, b):
 def differ(a, b, timeout=1):
     differ = diff_match_patch.diff_match_patch()
     differ.Diff_Timeout = timeout
-    return differ.diff_main(a, b)
+    result = differ.diff_main(a, b)
+    differ.diff_cleanupSemantic(result)
+    return result
 
 
 def smallest(*parts):
@@ -254,8 +255,7 @@ class Delta(object):
                 if other_op.get('retain'):
                     new_op = {}
                     if isinstance(self_op.get('retain'), (int, float)):
-                        new_op['retain'] = isinstance(self_op.get(
-                            'retain'), (int, float)) and length or other_op.get('retain')
+                        new_op['retain'] = length if isinstance(other_op.get('retain'), (int, float)) else other_op.get('retain')
                     else:
                         if isinstance(other_op.get('retain'), (int, float)):
                             if self_op.get('retain') is None:
@@ -342,7 +342,6 @@ class Delta(object):
         iter = self.iterator()
         line = self.__class__()
         i = 0
-        is_previous_newline = False
         while iter.has_next():
             if iter.peek_type() != 'insert':
                 return
@@ -355,23 +354,13 @@ class Delta(object):
 
             if index < 0:
                 line.push(iter.next())
-                is_previous_newline = False
             elif index > 0:
                 line.push(iter.next(index))
-                is_previous_newline = False
             else:
                 attributes = iter.next(1).get('attributes', {})
-                if not line and attributes.get('code-block'):
-                    # Code block's <pre> html tag handles newline characters automatically
-                    yield Delta([{'insert': '\n'}]), attributes, i
-                else:
-                    yield line, attributes, i
+                yield line, attributes, i
                 i += 1
-                if is_previous_newline and not attributes.get('code-block'):
-                    yield Delta([{'insert': ''}]), attributes, i  # adds <br> tag
-                    i += 1
                 line = Delta()
-                is_previous_newline = True
         if len(line) > 0:
             yield line, {}, i
 

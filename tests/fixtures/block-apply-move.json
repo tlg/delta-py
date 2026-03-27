@@ -1,0 +1,27 @@
+{
+  "module": "Block",
+  "method": "applyMove",
+  "base": ["A", "B", "C", "D", "E"],
+  "tests": [
+    {
+      "name": "moves one block to the start",
+      "move": { "index": 1, "count": 1, "before": 0 },
+      "expected": ["B", "A", "C", "D", "E"]
+    },
+    {
+      "name": "moves one block to the end",
+      "move": { "index": 1, "count": 1, "before": 5 },
+      "expected": ["A", "C", "D", "E", "B"]
+    },
+    {
+      "name": "moves a range",
+      "move": { "index": 2, "count": 2, "before": 5 },
+      "expected": ["A", "B", "E", "C", "D"]
+    },
+    {
+      "name": "normalizes destination inside the source to a no-op",
+      "move": { "index": 1, "count": 2, "before": 2 },
+      "expected": ["A", "B", "C", "D", "E"]
+    }
+  ]
+}

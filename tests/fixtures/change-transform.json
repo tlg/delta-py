@@ -1,0 +1,359 @@
+{
+  "module": "Change",
+  "method": "transformChange",
+  "tests": [
+    {
+      "name": "transforms pure delta insert conflicts with standard Delta priority",
+      "base": [{ "insert": "A\n" }],
+      "left": { "delta": [{ "insert": "X" }], "blockDelta": [] },
+      "right": { "delta": [{ "insert": "Y" }], "blockDelta": [] },
+      "verifyConvergence": true
+    },
+    {
+      "name": "rebases same-gap inserts over repeated blank lines with moved trailing blank block (priority=true)",
+      "base": [{ "insert": "\n\n" }],
+      "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
+      "right": {
+        "delta": [{ "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "priority": true,
+      "expectedResult": [{ "insert": "\nxx\n" }],
+      "verifyConvergence": true
+    },
+    {
+      "name": "rebases same-gap inserts over repeated blank lines with moved trailing blank block (priority=false)",
+      "base": [{ "insert": "\n\n" }],
+      "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
+      "right": {
+        "delta": [{ "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "priority": false,
+      "expectedResult": [{ "insert": "\nxx\n" }],
+      "verifyConvergence": true
+    },
+    {
+      "name": "transforms inline edits so they follow blocks moved by the other change",
+      "base": [{ "insert": "A\nB\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 3 }, { "insert": "x" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "Bx\nA\n" }]
+    },
+    {
+      "name": "keeps inline inserts in unaffected-before blocks fixed under concurrent moves",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 4 } }] },
+      "right": { "delta": [{ "retain": 1 }, { "insert": "x" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "Ax\nB\nD\nC\n" }]
+    },
+    {
+      "name": "keeps inline inserts in unaffected-after blocks fixed under concurrent moves",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 7 }, { "insert": "x" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B\nA\nC\nDx\n" }]
+    },
+    {
+      "name": "transforms inline deletes so they follow moved blocks",
+      "base": [{ "insert": "A\nBC\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 3 }, { "delete": 1 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B\nA\n" }]
+    },
+    {
+      "name": "keeps inline deletes in unaffected-before blocks fixed under concurrent moves",
+      "base": [{ "insert": "Ax\nB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 4 } }] },
+      "right": { "delta": [{ "retain": 1 }, { "delete": 1 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nB\nD\nC\n" }]
+    },
+    {
+      "name": "keeps inline deletes in unaffected-after blocks fixed under concurrent moves",
+      "base": [{ "insert": "A\nB\nC\nDx\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 7 }, { "delete": 1 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B\nA\nC\nD\n" }]
+    },
+    {
+      "name": "transforms line-format changes so they stay on the moved newline",
+      "base": [{ "insert": "A\nB\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 3 }, { "retain": 1, "attributes": { "align": "center" } }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B" }, { "insert": "\n", "attributes": { "align": "center" } }, { "insert": "A\n" }]
+    },
+    {
+      "name": "transforms inline styles so they stay on the moved text",
+      "base": [{ "insert": "AB\nC\n" }],
+      "left": { "delta": [], "blockDelta": [{ "move": { "count": 1, "before": 2 } }] },
+      "right": { "delta": [{ "retain": 1 }, { "retain": 1, "attributes": { "bold": true } }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "C\nA" }, { "insert": "B", "attributes": { "bold": true } }, { "insert": "\n" }]
+    },
+    {
+      "name": "keeps inline styles in unaffected blocks fixed under concurrent moves",
+      "base": [{ "insert": "AB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 1 }, { "retain": 1, "attributes": { "bold": true } }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "D\nA" }, { "insert": "B", "attributes": { "bold": true } }, { "insert": "\nC\n" }]
+    },
+    {
+      "name": "rebases inline styles through splits in the same block",
+      "base": [{ "insert": "AB\nC\n" }],
+      "left": { "delta": [{ "retain": 1 }, { "insert": "\n" }], "blockDelta": [] },
+      "right": { "delta": [{ "retain": 1 }, { "retain": 1, "attributes": { "bold": true } }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\n" }, { "insert": "B", "attributes": { "bold": true } }, { "insert": "\nC\n" }]
+    },
+    {
+      "name": "rebases line styles through splits onto the surviving newline",
+      "base": [{ "insert": "AB\nC\n" }],
+      "left": { "delta": [{ "retain": 1 }, { "insert": "\n" }], "blockDelta": [] },
+      "right": { "delta": [{ "retain": 2 }, { "retain": 1, "attributes": { "align": "center" } }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nB" }, { "insert": "\n", "attributes": { "align": "center" } }, { "insert": "C\n" }]
+    },
+    {
+      "name": "transforms inline edits inside UTF-16 content so they follow the moved block",
+      "base": [{ "insert": "😀\nB\n" }],
+      "left": { "delta": [], "blockDelta": [{ "move": { "count": 1, "before": 2 } }] },
+      "right": { "delta": [{ "retain": 2 }, { "insert": "x" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B\n😀x\n" }]
+    },
+    {
+      "name": "transforms inline edits across moved blocks that contain inline embeds",
+      "base": [
+        { "insert": "A" },
+        { "insert": { "image": "inline" } },
+        { "insert": "B\nC\n" }
+      ],
+      "left": { "delta": [], "blockDelta": [{ "move": { "count": 1, "before": 2 } }] },
+      "right": { "delta": [{ "retain": 2 }, { "insert": "x" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [
+        { "insert": "C\nA" },
+        { "insert": { "image": "inline" } },
+        { "insert": "xB\n" }
+      ]
+    },
+    {
+      "name": "transforms strict-prefix whole-line deletes of a moved multi-block slice",
+      "base": [{ "insert": "A\nB\nC\nD\nE\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 3, "before": 5 } }] },
+      "right": { "delta": [{ "retain": 2 }, { "delete": 2 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nE\nC\nD\n" }]
+    },
+    {
+      "name": "transforms strict-interior whole-line deletes of a moved multi-block slice",
+      "base": [{ "insert": "A\nB\nC\nD\nE\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 3, "before": 5 } }] },
+      "right": { "delta": [{ "retain": 4 }, { "delete": 2 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nE\nB\nD\n" }]
+    },
+    {
+      "name": "transforms strict-suffix whole-line deletes of a moved multi-block slice",
+      "base": [{ "insert": "A\nB\nC\nD\nE\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 3, "before": 5 } }] },
+      "right": { "delta": [{ "retain": 6 }, { "delete": 2 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nE\nB\nC\n" }]
+    },
+    {
+      "name": "keeps whole-line inserts before the moved source outside the slice",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }] },
+      "right": { "delta": [{ "retain": 2 }, { "insert": "X\n" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nC\nX\nB\n" }]
+    },
+    {
+      "name": "keeps whole-line inserts at the moved source-end boundary outside the slice",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 4 }, { "insert": "X\n" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B\nA\nX\nC\n" }]
+    },
+    {
+      "name": "keeps merges in unaffected-before blocks fixed under concurrent moves",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 3 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 1 }, { "delete": 1 }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "D\nAB\nC\n" }]
+    },
+    {
+      "name": "keeps splits in unaffected-before blocks fixed under concurrent moves",
+      "base": [{ "insert": "AB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "retain": 1 }, { "insert": "\n" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "D\nA\nB\nC\n" }]
+    },
+    {
+      "name": "transforms deletes of the entire moved slice so the move normalizes away",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 2, "before": 4 } }] },
+      "right": { "delta": [{ "retain": 2 }, { "delete": 4 }], "blockDelta": [] },
+      "priority": true,
+      "expectedEmptyBlockDelta": true,
+      "expectedResult": [{ "insert": "A\nD\n" }]
+    },
+    {
+      "name": "lowers restored source boundaries into delta before replaying transformed moves",
+      "base": [{ "insert": "A\nB\n" }],
+      "left": { "delta": [{ "retain": 1 }, { "delete": 1 }], "blockDelta": [] },
+      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "priority": true,
+      "expectedTransformed": {
+        "delta": [{ "retain": 1 }, { "insert": "\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "expectedResult": [{ "insert": "B\nA\n" }]
+    },
+    {
+      "name": "transforms multi-move destinations step by step on the current state",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "left": { "delta": [{ "insert": "X\n" }], "blockDelta": [] },
+      "right": {
+        "delta": [],
+        "blockDeltaFromMoves": [
+          { "index": 2, "count": 1, "before": 0 },
+          { "index": 3, "count": 1, "before": 1 }
+        ]
+      },
+      "priority": false,
+      "expectedResult": [{ "insert": "C\nD\nX\nA\nB\n" }],
+      "verifyConvergence": true
+    },
+    {
+      "name": "orders destination-boundary inserts by transform priority (priority=true)",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "insert": "\n" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "B\n\nA\nC\n" }]
+    },
+    {
+      "name": "orders destination-boundary inserts by transform priority (priority=false)",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "right": { "delta": [{ "insert": "\n" }], "blockDelta": [] },
+      "priority": false,
+      "expectedResult": [{ "insert": "\nB\nA\nC\n" }]
+    },
+    {
+      "name": "falls back to delta-only when source-start after edge consumed by partial text",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [{ "retain": 2 }, { "insert": "x" }], "blockDelta": [] },
+      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "priority": true,
+      "expectedEmptyBlockDelta": true,
+      "verifyConvergence": true
+    },
+    {
+      "name": "falls back to delta-only when destination gap consumed by partial text",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
+      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "priority": true,
+      "expectedEmptyBlockDelta": true,
+      "expectedResult": [{ "insert": "xB\nA\nC\n" }],
+      "verifyConvergence": true
+    },
+    {
+      "name": "falls back to delta-only when source-start after edge consumed by inline embed",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [{ "retain": 2 }, { "insert": { "image": "inline" } }], "blockDelta": [] },
+      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "priority": true,
+      "expectedEmptyBlockDelta": true,
+      "verifyConvergence": true
+    },
+    {
+      "name": "falls back to delta-only when after edge after a W·P gap fragment",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [{ "retain": 2 }, { "insert": "X\ny" }], "blockDelta": [] },
+      "right": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }] },
+      "priority": true,
+      "expectedEmptyBlockDelta": true,
+      "verifyConvergence": true
+    },
+    {
+      "name": "falls back to delta-only when step 2 of multi-move needs non-expressible after edge",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "left": { "delta": [{ "insert": "x" }], "blockDelta": [] },
+      "right": {
+        "delta": [],
+        "blockDeltaFromMoves": [
+          { "index": 3, "count": 1, "before": 2 },
+          { "index": 3, "count": 1, "before": 0 }
+        ]
+      },
+      "priority": true,
+      "expectedEmptyBlockDelta": true,
+      "verifyConvergence": true
+    },
+    {
+      "name": "preserves the transform law when expressible mixed meets partial-boundary fallback",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": {
+        "delta": [{ "insert": "X\n" }],
+        "blockDelta": [{ "move": { "count": 1, "before": 4 } }]
+      },
+      "right": {
+        "delta": [{ "retain": 2 }, { "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "verifyConvergenceBothPriorities": true
+    },
+    {
+      "name": "preserves the transform law for mixed-vs-mixed W·P fallback cases",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": {
+        "delta": [{ "insert": "X\n" }],
+        "blockDelta": [{ "move": { "count": 1, "before": 4 } }]
+      },
+      "right": {
+        "delta": [{ "retain": 2 }, { "insert": "X\ny" }],
+        "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "verifyConvergenceBothPriorities": true
+    },
+    {
+      "name": "tracks repeated identical block contents by lineage, not by content text",
+      "base": [{ "insert": "A\nA\nB\n" }],
+      "left": { "delta": [], "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }] },
+      "right": { "delta": [{ "retain": 3 }, { "insert": "x" }], "blockDelta": [] },
+      "priority": true,
+      "expectedResult": [{ "insert": "A\nB\nAx\n" }]
+    },
+    {
+      "name": "lowers restored boundaries into delta for multi-move transformed sequences",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "left": { "delta": [{ "retain": 1 }, { "delete": 1 }], "blockDelta": [] },
+      "right": {
+        "delta": [],
+        "blockDeltaFromMoves": [
+          { "index": 1, "count": 1, "before": 0 },
+          { "index": 2, "count": 1, "before": 1 }
+        ]
+      },
+      "priority": true,
+      "expectedTransformedDelta": [{ "retain": 1 }, { "insert": "\n" }],
+      "expectedHasBlockDelta": true,
+      "expectedResult": [{ "insert": "B\nC\nA\n" }]
+    }
+  ]
+}

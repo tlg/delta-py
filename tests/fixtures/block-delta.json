@@ -1,0 +1,98 @@
+{
+  "module": "Block",
+  "method": "BlockDelta",
+  "tests": [
+    {
+      "name": "builds cursor-based move ops",
+      "build": [["retain", 1], ["move", 2, 5]],
+      "expectedOps": [{ "retain": 1 }, { "move": { "count": 2, "before": 5 } }]
+    },
+    {
+      "name": "merges retains and chops trailing retain",
+      "build": [["retain", 1], ["retain", 2], ["move", 1, 0], ["retain", 3]],
+      "chop": true,
+      "expectedOps": [{ "retain": 3 }, { "move": { "count": 1, "before": 0 } }]
+    },
+    {
+      "name": "applies cursor-based moves",
+      "build": [["retain", 1], ["move", 2, 5]],
+      "apply": ["A", "B", "C", "D", "E"],
+      "expectedApply": ["A", "D", "E", "B", "C"]
+    },
+    {
+      "name": "round-trips normalized move sequences through the cursor stream",
+      "fromMoves": [{ "index": 3, "count": 1, "before": 0 }, { "index": 2, "count": 1, "before": 1 }],
+      "expectedOps": [
+        { "retain": 3 },
+        { "move": { "count": 1, "before": 0 } },
+        { "retain": 1 },
+        { "move": { "count": 1, "before": 1 } }
+      ],
+      "resolveBlockCount": 4,
+      "expectedResolve": [{ "index": 3, "count": 1, "before": 0 }, { "index": 2, "count": 1, "before": 1 }],
+      "apply": [0, 1, 2, 3],
+      "expectedApply": [3, 1, 0, 2]
+    },
+    {
+      "name": "composes cursor-based deltas",
+      "a": { "build": [["retain", 1], ["move", 2, 5]] },
+      "b": { "build": [["retain", 3], ["move", 2, 0]] },
+      "composeBlockCount": 5,
+      "expectedOps": [{ "retain": 1 }, { "move": { "count": 2, "before": 0 } }],
+      "apply": ["A", "B", "C", "D", "E"],
+      "expectedApply": ["B", "C", "A", "D", "E"]
+    },
+    {
+      "name": "inverts cursor-based deltas",
+      "build": [["retain", 1], ["move", 2, 5]],
+      "invertBlockCount": 5,
+      "expectedInvertOps": [{ "retain": 3 }, { "move": { "count": 2, "before": 1 } }],
+      "apply": ["A", "B", "C", "D", "E"],
+      "verifyInvertRoundTrip": true
+    },
+    {
+      "name": "transforms cursor-based deltas with priority",
+      "a": { "build": [["retain", 1], ["move", 1, 0]] },
+      "b": { "build": [["retain", 3], ["move", 1, 0]] },
+      "transformBlockCount": 5,
+      "priority": true,
+      "expectedOps": [{ "retain": 3 }, { "move": { "count": 1, "before": 1 } }],
+      "apply": ["A", "B", "C", "D", "E"],
+      "expectedApply": ["B", "D", "A", "C", "E"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "transforms cursor-based deltas without priority",
+      "a": { "build": [["retain", 1], ["move", 1, 0]] },
+      "b": { "build": [["retain", 3], ["move", 1, 0]] },
+      "transformBlockCount": 5,
+      "priority": false,
+      "expectedOps": [{ "retain": 3 }, { "move": { "count": 1, "before": 0 } }],
+      "apply": ["A", "B", "C", "D", "E"],
+      "expectedApply": ["D", "B", "A", "C", "E"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "matches diffToMoves for reordered block order",
+      "diffBase": ["A", "B", "C", "D"],
+      "diffTarget": ["D", "B", "A", "C"],
+      "apply": ["A", "B", "C", "D"],
+      "expectedApply": ["D", "B", "A", "C"]
+    },
+    {
+      "name": "uses canonical left-to-right extraction for ambiguous reorder synthesis",
+      "diffBase": ["A", "B", "C"],
+      "diffTarget": ["B", "A", "C"],
+      "expectedMoves": [{ "index": 1, "count": 1, "before": 0 }]
+    },
+    {
+      "name": "composes identical numeric payloads to a semantic no-op when they undo each other",
+      "a": { "build": [["retain", 1], ["move", 1, 0]] },
+      "b": { "build": [["retain", 1], ["move", 1, 0]] },
+      "composeBlockCount": 3,
+      "expectedOps": [],
+      "apply": ["A", "B", "C"],
+      "expectedApply": ["A", "B", "C"]
+    }
+  ]
+}

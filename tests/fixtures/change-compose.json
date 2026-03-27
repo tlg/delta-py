@@ -1,0 +1,63 @@
+{
+  "module": "Change",
+  "method": "composeChange",
+  "tests": [
+    {
+      "name": "composes sequential changes by replaying their semantics",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "first": {
+        "delta": [{ "retain": 1 }, { "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }]
+      },
+      "second": {
+        "delta": [{ "retain": 6 }, { "insert": "z" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "expectedResult": [{ "insert": "C\nAx\nBz\n" }]
+    },
+    {
+      "name": "composes mixed multi-move sequences through prepared lowering",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "first": {
+        "delta": [{ "insert": "X\n" }],
+        "blockDelta": []
+      },
+      "second": {
+        "delta": [],
+        "blockDeltaFromMoves": [
+          { "index": 2, "count": 1, "before": 0 },
+          { "index": 3, "count": 1, "before": 1 }
+        ]
+      },
+      "expectedHasBlockDelta": true,
+      "expectedResult": [{ "insert": "B\nC\nX\nA\nD\n" }]
+    },
+    {
+      "name": "falls back to exact sequential lowering when lifting changes compose semantics",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "first": {
+        "delta": [],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "second": {
+        "delta": [{ "retain": 1 }, { "delete": 1 }],
+        "blockDelta": []
+      },
+      "expectedResult": [{ "insert": "BA\nC\n" }]
+    },
+    {
+      "name": "composes move-then-partial-boundary-insert sequences as exact delta-only fallbacks",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "first": {
+        "delta": [],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "second": {
+        "delta": [{ "insert": "x" }],
+        "blockDelta": []
+      },
+      "expectedEmptyBlockDelta": true,
+      "expectedResult": [{ "insert": "xB\nA\nC\n" }]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "module": "AttributeMap",
+  "method": "diff",
+  "tests": [
+    {
+      "name": "left is undefined",
+      "a": null,
+      "b": { "bold": true, "color": "red" },
+      "expected": { "bold": true, "color": "red" }
+    },
+    {
+      "name": "right is undefined",
+      "a": { "bold": true, "color": "red" },
+      "b": null,
+      "expected": { "bold": null, "color": null }
+    },
+    {
+      "name": "same format",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": true, "color": "red" },
+      "expected": null
+    },
+    {
+      "name": "add format",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": true, "italic": true, "color": "red" },
+      "expected": { "italic": true }
+    },
+    {
+      "name": "remove format",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": true },
+      "expected": { "color": null }
+    },
+    {
+      "name": "overwrite format",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": true, "color": "blue" },
+      "expected": { "color": "blue" }
+    }
+  ]
+}

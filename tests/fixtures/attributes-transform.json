@@ -1,0 +1,41 @@
+{
+  "module": "AttributeMap",
+  "method": "transform",
+  "tests": [
+    {
+      "name": "left is undefined",
+      "a": null,
+      "b": { "bold": true, "color": "red", "font": null },
+      "priority": false,
+      "expected": { "bold": true, "color": "red", "font": null }
+    },
+    {
+      "name": "right is undefined",
+      "a": { "bold": true, "color": "red", "font": null },
+      "b": null,
+      "priority": false,
+      "expected": null
+    },
+    {
+      "name": "both are undefined",
+      "a": null,
+      "b": null,
+      "priority": false,
+      "expected": null
+    },
+    {
+      "name": "with priority",
+      "a": { "bold": true, "color": "red", "font": null },
+      "b": { "color": "blue", "font": "serif", "italic": true },
+      "priority": true,
+      "expected": { "italic": true }
+    },
+    {
+      "name": "without priority",
+      "a": { "bold": true, "color": "red", "font": null },
+      "b": { "color": "blue", "font": "serif", "italic": true },
+      "priority": false,
+      "expected": { "color": "blue", "font": "serif", "italic": true }
+    }
+  ]
+}

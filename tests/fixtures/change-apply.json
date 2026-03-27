@@ -1,0 +1,105 @@
+{
+  "module": "Change",
+  "method": "applyChange",
+  "tests": [
+    {
+      "name": "applies delta first and blockDelta second",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 1 }, { "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }]
+      },
+      "expected": [{ "insert": "Ax\nC\nB\n" }]
+    },
+    {
+      "name": "applies same-envelope whole-line insertions before moving the inserted line",
+      "base": [{ "insert": "A\nB\n" }],
+      "change": {
+        "delta": [{ "insert": "X\n" }],
+        "blockDelta": [{ "move": { "count": 1, "before": 3 } }]
+      },
+      "expected": [{ "insert": "A\nB\nX\n" }]
+    },
+    {
+      "name": "applies same-envelope splits before moving one resulting block",
+      "base": [{ "insert": "AB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 1 }, { "insert": "\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }]
+      },
+      "expected": [{ "insert": "A\nC\nB\n" }]
+    },
+    {
+      "name": "applies same-envelope splits before moving both resulting blocks together",
+      "base": [{ "insert": "AB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 1 }, { "insert": "\n" }],
+        "blockDelta": [{ "move": { "count": 2, "before": 3 } }]
+      },
+      "expected": [{ "insert": "C\nA\nB\n" }]
+    },
+    {
+      "name": "applies same-envelope merges before moving the merged block",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 1 }, { "delete": 1 }],
+        "blockDelta": [{ "move": { "count": 1, "before": 2 } }]
+      },
+      "expected": [{ "insert": "C\nAB\n" }]
+    },
+    {
+      "name": "applies same-envelope inserted destination boundaries before targeting them",
+      "base": [{ "insert": "A\nB\n" }],
+      "change": {
+        "delta": [{ "retain": 2 }, { "insert": "X\n" }],
+        "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 1 } }]
+      },
+      "expected": [{ "insert": "A\nB\nX\n" }]
+    },
+    {
+      "name": "applies same-envelope split-created destination boundaries before targeting them",
+      "base": [{ "insert": "AB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 1 }, { "insert": "\n" }],
+        "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 1 } }]
+      },
+      "expected": [{ "insert": "A\nC\nB\n" }]
+    },
+    {
+      "name": "applies same-envelope W·P boundary inserts before moving the resulting prefixed block",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 2 }, { "insert": "X\ny" }],
+        "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "expected": [{ "insert": "yB\nA\nX\nC\n" }]
+    },
+    {
+      "name": "moves block-embed lines as whole blocks with their newline attributes",
+      "base": [
+        { "insert": "A\n" },
+        { "insert": { "image": "block" } },
+        { "insert": "\n", "attributes": { "align": "center" } },
+        { "insert": "B\n" }
+      ],
+      "change": {
+        "delta": [],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }]
+      },
+      "expected": [
+        { "insert": "A\nB\n" },
+        { "insert": { "image": "block" } },
+        { "insert": "\n", "attributes": { "align": "center" } }
+      ]
+    },
+    {
+      "name": "ignores later no-op steps in a multi-move program",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "change": {
+        "delta": [],
+        "blockDelta": [{ "retain": 2 }, { "move": { "count": 1, "before": 0 } }, { "move": { "count": 1, "before": 1 } }]
+      },
+      "expected": [{ "insert": "C\nA\nB\n" }]
+    }
+  ]
+}

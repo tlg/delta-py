@@ -1,0 +1,26 @@
+{
+  "module": "Block",
+  "method": "invertMove",
+  "tests": [
+    {
+      "name": "inverts a move to the end",
+      "base": ["A", "B", "C", "D", "E"],
+      "move": { "index": 1, "count": 2, "before": 5 },
+      "expectedInverse": [{ "index": 3, "count": 2, "before": 1 }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "inverts a move to the start",
+      "base": ["A", "B", "C", "D", "E"],
+      "move": { "index": 4, "count": 1, "before": 0 },
+      "expectedInverse": [{ "index": 1, "count": 4, "before": 0 }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "keeps noop inverse empty",
+      "base": ["A", "B", "C", "D", "E"],
+      "move": { "index": 1, "count": 2, "before": 2 },
+      "expectedInverse": []
+    }
+  ]
+}

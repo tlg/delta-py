@@ -1,0 +1,60 @@
+{
+  "module": "Delta",
+  "method": "invert",
+  "tests": [
+    {
+      "name": "insert",
+      "delta": [{ "retain": 2 }, { "insert": "A" }],
+      "base": [{ "insert": "123456" }],
+      "expected": [{ "retain": 2 }, { "delete": 1 }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "delete",
+      "delta": [{ "retain": 2 }, { "delete": 3 }],
+      "base": [{ "insert": "123456" }],
+      "expected": [{ "retain": 2 }, { "insert": "345" }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "retain",
+      "delta": [{ "retain": 2 }, { "retain": 3, "attributes": { "bold": true } }],
+      "base": [{ "insert": "123456" }],
+      "expected": [{ "retain": 2 }, { "retain": 3, "attributes": { "bold": null } }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "retain on a delta with different attributes",
+      "delta": [{ "retain": 4, "attributes": { "italic": true } }],
+      "base": [{ "insert": "123" }, { "insert": "4", "attributes": { "bold": true } }],
+      "expected": [{ "retain": 4, "attributes": { "italic": null } }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "combined",
+      "delta": [
+        { "retain": 2 },
+        { "delete": 2 },
+        { "insert": "AB", "attributes": { "italic": true } },
+        { "retain": 2, "attributes": { "italic": null, "bold": true } },
+        { "retain": 2, "attributes": { "color": "red" } },
+        { "delete": 1 }
+      ],
+      "base": [
+        { "insert": "123", "attributes": { "bold": true } },
+        { "insert": "456", "attributes": { "italic": true } },
+        { "insert": "789", "attributes": { "color": "red", "bold": true } }
+      ],
+      "expected": [
+        { "retain": 2 },
+        { "insert": "3", "attributes": { "bold": true } },
+        { "insert": "4", "attributes": { "italic": true } },
+        { "delete": 2 },
+        { "retain": 2, "attributes": { "italic": true, "bold": null } },
+        { "retain": 2 },
+        { "insert": "9", "attributes": { "color": "red", "bold": true } }
+      ],
+      "verifyRoundTrip": true
+    }
+  ]
+}

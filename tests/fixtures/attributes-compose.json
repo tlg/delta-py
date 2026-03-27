@@ -1,0 +1,54 @@
+{
+  "module": "AttributeMap",
+  "method": "compose",
+  "tests": [
+    {
+      "name": "left is undefined",
+      "a": null,
+      "b": { "bold": true, "color": "red" },
+      "expected": { "bold": true, "color": "red" }
+    },
+    {
+      "name": "right is undefined",
+      "a": { "bold": true, "color": "red" },
+      "b": null,
+      "expected": { "bold": true, "color": "red" }
+    },
+    {
+      "name": "both are undefined",
+      "a": null,
+      "b": null,
+      "expected": null
+    },
+    {
+      "name": "missing",
+      "a": { "bold": true, "color": "red" },
+      "b": { "italic": true },
+      "expected": { "bold": true, "italic": true, "color": "red" }
+    },
+    {
+      "name": "overwrite",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": false, "color": "blue" },
+      "expected": { "bold": false, "color": "blue" }
+    },
+    {
+      "name": "remove",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": null },
+      "expected": { "color": "red" }
+    },
+    {
+      "name": "remove to none",
+      "a": { "bold": true, "color": "red" },
+      "b": { "bold": null, "color": null },
+      "expected": null
+    },
+    {
+      "name": "remove missing",
+      "a": { "bold": true, "color": "red" },
+      "b": { "italic": null },
+      "expected": { "bold": true, "color": "red" }
+    }
+  ]
+}

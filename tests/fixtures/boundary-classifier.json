@@ -1,0 +1,72 @@
+{
+  "module": "BoundaryClassifier",
+  "method": "classifyDeltaBoundaries",
+  "tests": [
+    {
+      "name": "classifies inline inserts with no newline touch as block-stable",
+      "base": [{ "insert": "AB\nC\n" }],
+      "delta": [{ "retain": 1 }, { "insert": "x" }],
+      "expected": "block-stable"
+    },
+    {
+      "name": "classifies inline formats with no newline touch as block-stable",
+      "base": [{ "insert": "AB\nC\n" }],
+      "delta": [{ "retain": 2 }, { "retain": 1, "attributes": { "align": "center" } }],
+      "expected": "block-stable"
+    },
+    {
+      "name": "classifies boundary-aligned whole-line deletes as whole-line structural",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "delta": [{ "retain": 2 }, { "delete": 2 }],
+      "expected": "whole-line structural"
+    },
+    {
+      "name": "classifies boundary-aligned whole-line inserts as whole-line structural",
+      "base": [{ "insert": "A\nB\n" }],
+      "delta": [{ "retain": 2 }, { "insert": "X\nY\n" }],
+      "expected": "whole-line structural"
+    },
+    {
+      "name": "classifies boundary-aligned whole-line replaces as whole-line structural",
+      "base": [{ "insert": "A\nB\n" }],
+      "delta": [{ "retain": 2 }, { "delete": 2 }, { "insert": "X\n" }],
+      "expected": "whole-line structural"
+    },
+    {
+      "name": "treats embed-plus-newline insert runs at a boundary as whole-line structural",
+      "base": [{ "insert": "A\n" }],
+      "delta": [
+        { "retain": 2 },
+        { "insert": { "image": "block" } },
+        { "insert": "\n", "attributes": { "align": "right" } }
+      ],
+      "expected": "whole-line structural"
+    },
+    {
+      "name": "classifies mid-line newline insertion as split/merge",
+      "base": [{ "insert": "AB\nC\n" }],
+      "delta": [{ "retain": 1 }, { "insert": "\n" }],
+      "expected": "split/merge"
+    },
+    {
+      "name": "classifies newline-crossing deletes as split/merge",
+      "base": [{ "insert": "AB\nC\n" }],
+      "delta": [{ "retain": 1 }, { "delete": 2 }],
+      "expected": "split/merge"
+    },
+    {
+      "name": "classifies non-canonical insert runs at a boundary as split/merge",
+      "base": [{ "insert": "A\n" }],
+      "delta": [{ "retain": 2 }, { "insert": "\n" }, { "insert": "x" }],
+      "expected": "split/merge"
+    }
+  ],
+  "errorTests": [
+    {
+      "name": "requires canonical base documents",
+      "base": [{ "insert": "A" }],
+      "delta": [{ "retain": 1 }, { "insert": "x" }],
+      "error": "canonical document delta must end with a final newline"
+    }
+  ]
+}

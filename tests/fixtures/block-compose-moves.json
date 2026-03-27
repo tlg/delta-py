@@ -1,0 +1,30 @@
+{
+  "module": "Block",
+  "method": "composeMoves",
+  "tests": [
+    {
+      "name": "collapses an inverse move pair",
+      "base": ["A", "B", "C", "D", "E"],
+      "a": { "index": 1, "count": 2, "before": 5 },
+      "b": { "index": 3, "count": 2, "before": 1 },
+      "expected": [],
+      "verifySequential": true
+    },
+    {
+      "name": "collapses moving the same range to a new destination",
+      "base": ["A", "B", "C", "D", "E"],
+      "a": { "index": 1, "count": 2, "before": 5 },
+      "b": { "index": 3, "count": 2, "before": 0 },
+      "expected": [{ "index": 1, "count": 2, "before": 0 }],
+      "verifySequential": true
+    },
+    {
+      "name": "treats identical numeric payloads in post-a coordinates as semantic moves",
+      "base": ["A", "B", "C"],
+      "a": { "index": 1, "count": 1, "before": 0 },
+      "b": { "index": 1, "count": 1, "before": 0 },
+      "expected": [],
+      "verifySequential": true
+    }
+  ]
+}

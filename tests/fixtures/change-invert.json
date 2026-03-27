@@ -1,0 +1,35 @@
+{
+  "module": "Change",
+  "method": "invertChange",
+  "tests": [
+    {
+      "name": "inverts a change back to the base document",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "change": {
+        "delta": [{ "retain": 1 }, { "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 3 } }]
+      },
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "inverts mixed multi-move changes by undoing delta intent before residual reorder",
+      "base": [{ "insert": "A\nB\nC\nD\n" }],
+      "change": {
+        "delta": [{ "insert": "X\n" }],
+        "blockDelta": [{ "retain": 3 }, { "move": { "count": 2, "before": 0 } }]
+      },
+      "expectedHasDelta": true,
+      "expectedHasBlockDelta": true,
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "inverts mixed changes with partial destination inserts exactly",
+      "base": [{ "insert": "A\nB\nC\n" }],
+      "change": {
+        "delta": [{ "insert": "x" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }]
+      },
+      "verifyRoundTrip": true
+    }
+  ]
+}

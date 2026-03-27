@@ -1,0 +1,66 @@
+{
+  "module": "Block",
+  "method": "transformMove",
+  "tests": [
+    {
+      "name": "rebases disjoint moves with the same destination when this has priority",
+      "base": ["A", "B", "C", "D", "E"],
+      "a": { "index": 1, "count": 1, "before": 0 },
+      "b": { "index": 3, "count": 1, "before": 0 },
+      "priority": true,
+      "expectedBPrime": [{ "index": 3, "count": 1, "before": 1 }],
+      "expectedResult": ["B", "D", "A", "C", "E"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "rebases disjoint moves with the same destination when the other op has priority",
+      "base": ["A", "B", "C", "D", "E"],
+      "a": { "index": 1, "count": 1, "before": 0 },
+      "b": { "index": 3, "count": 1, "before": 0 },
+      "priority": false,
+      "expectedBPrime": [{ "index": 3, "count": 1, "before": 0 }],
+      "expectedResult": ["D", "B", "A", "C", "E"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "rebases same-destination interior moves with priority",
+      "base": ["A", "B", "C", "D", "E", "F"],
+      "a": { "index": 0, "count": 1, "before": 3 },
+      "b": { "index": 5, "count": 1, "before": 3 },
+      "priority": true,
+      "expectedBPrime": [{ "index": 5, "count": 1, "before": 3 }],
+      "expectedResult": ["B", "C", "A", "F", "D", "E"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "rebases same-destination interior moves without priority",
+      "base": ["A", "B", "C", "D", "E", "F"],
+      "a": { "index": 0, "count": 1, "before": 3 },
+      "b": { "index": 5, "count": 1, "before": 3 },
+      "priority": false,
+      "expectedBPrime": [{ "index": 5, "count": 1, "before": 2 }],
+      "expectedResult": ["B", "C", "F", "A", "D", "E"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "drops a redundant concurrent move",
+      "base": ["A", "B", "C", "D", "E"],
+      "a": { "index": 1, "count": 2, "before": 5 },
+      "b": { "index": 1, "count": 2, "before": 5 },
+      "priority": true,
+      "expectedBPrime": [],
+      "expectedResult": ["A", "D", "E", "B", "C"],
+      "verifyConvergence": true
+    },
+    {
+      "name": "rebases the same source to a new destination",
+      "base": ["A", "B", "C", "D", "E"],
+      "a": { "index": 1, "count": 2, "before": 5 },
+      "b": { "index": 1, "count": 2, "before": 0 },
+      "priority": true,
+      "expectedBPrime": [{ "index": 3, "count": 2, "before": 0 }],
+      "expectedResult": ["B", "C", "A", "D", "E"],
+      "verifyConvergence": true
+    }
+  ]
+}

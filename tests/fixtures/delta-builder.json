@@ -1,0 +1,195 @@
+{
+  "module": "Delta",
+  "method": "builder",
+  "tests": [
+    {
+      "describe": "constructor",
+      "tests": [
+        {
+          "name": "empty",
+          "build": [],
+          "expected": []
+        },
+        {
+          "name": "empty ops",
+          "build": [
+            ["insert", ""],
+            ["delete", 0],
+            ["retain", 0]
+          ],
+          "expected": []
+        },
+        {
+          "name": "array of ops",
+          "ops": [
+            { "insert": "abc" },
+            { "retain": 1, "attributes": { "color": "red" } },
+            { "delete": 4 },
+            { "insert": "def", "attributes": { "bold": true } },
+            { "retain": 6 }
+          ],
+          "expected": [
+            { "insert": "abc" },
+            { "retain": 1, "attributes": { "color": "red" } },
+            { "delete": 4 },
+            { "insert": "def", "attributes": { "bold": true } },
+            { "retain": 6 }
+          ]
+        }
+      ]
+    },
+    {
+      "describe": "insert",
+      "tests": [
+        {
+          "name": "insert(text)",
+          "build": [["insert", "test"]],
+          "expected": [{ "insert": "test" }]
+        },
+        {
+          "name": "insert(text, null)",
+          "build": [["insert", "test", null]],
+          "expected": [{ "insert": "test" }]
+        },
+        {
+          "name": "insert(embed)",
+          "build": [["insert", { "embed": 1 }]],
+          "expected": [{ "insert": { "embed": 1 } }]
+        },
+        {
+          "name": "insert(embed, attributes)",
+          "build": [["insert", { "embed": 1 }, { "url": "http://quilljs.com", "alt": "Quill" }]],
+          "expected": [{ "insert": { "embed": 1 }, "attributes": { "url": "http://quilljs.com", "alt": "Quill" } }]
+        },
+        {
+          "name": "insert(embed) non-integer",
+          "build": [["insert", { "url": "http://quilljs.com" }, { "alt": "Quill" }]],
+          "expected": [{ "insert": { "url": "http://quilljs.com" }, "attributes": { "alt": "Quill" } }]
+        },
+        {
+          "name": "insert(text, attributes)",
+          "build": [["insert", "test", { "bold": true }]],
+          "expected": [{ "insert": "test", "attributes": { "bold": true } }]
+        },
+        {
+          "name": "insert(text) after delete",
+          "build": [["delete", 1], ["insert", "a"]],
+          "expected": [{ "insert": "a" }, { "delete": 1 }]
+        },
+        {
+          "name": "insert(text) after delete with merge",
+          "build": [["insert", "a"], ["delete", 1], ["insert", "b"]],
+          "expected": [{ "insert": "ab" }, { "delete": 1 }]
+        },
+        {
+          "name": "insert(text) after delete no merge",
+          "build": [["insert", { "embed": 1 }], ["delete", 1], ["insert", "a"]],
+          "expected": [{ "insert": { "embed": 1 } }, { "insert": "a" }, { "delete": 1 }]
+        },
+        {
+          "name": "insert(text, {})",
+          "build": [["insert", "a", {}]],
+          "expected": [{ "insert": "a" }]
+        }
+      ]
+    },
+    {
+      "describe": "delete",
+      "tests": [
+        {
+          "name": "delete(0)",
+          "build": [["delete", 0]],
+          "expected": []
+        },
+        {
+          "name": "delete(positive)",
+          "build": [["delete", 1]],
+          "expected": [{ "delete": 1 }]
+        }
+      ]
+    },
+    {
+      "describe": "retain",
+      "tests": [
+        {
+          "name": "retain(0)",
+          "build": [["retain", 0]],
+          "expected": []
+        },
+        {
+          "name": "retain(length)",
+          "build": [["retain", 2]],
+          "expected": [{ "retain": 2 }]
+        },
+        {
+          "name": "retain(length, null)",
+          "build": [["retain", 2, null]],
+          "expected": [{ "retain": 2 }]
+        },
+        {
+          "name": "retain(length, attributes)",
+          "build": [["retain", 1, { "bold": true }]],
+          "expected": [{ "retain": 1, "attributes": { "bold": true } }]
+        },
+        {
+          "name": "retain(length, {}) with trailing delete",
+          "build": [["retain", 2, {}], ["delete", 1]],
+          "expected": [{ "retain": 2 }, { "delete": 1 }]
+        }
+      ]
+    },
+    {
+      "describe": "push",
+      "tests": [
+        {
+          "name": "push(op) into empty",
+          "build": [],
+          "push": [{ "insert": "test" }],
+          "expected": [{ "insert": "test" }]
+        },
+        {
+          "name": "push(op) consecutive delete",
+          "build": [["delete", 2]],
+          "push": [{ "delete": 3 }],
+          "expected": [{ "delete": 5 }]
+        },
+        {
+          "name": "push(op) consecutive text",
+          "build": [["insert", "a"]],
+          "push": [{ "insert": "b" }],
+          "expected": [{ "insert": "ab" }]
+        },
+        {
+          "name": "push(op) consecutive texts with matching attributes",
+          "build": [["insert", "a", { "bold": true }]],
+          "push": [{ "insert": "b", "attributes": { "bold": true } }],
+          "expected": [{ "insert": "ab", "attributes": { "bold": true } }]
+        },
+        {
+          "name": "push(op) consecutive retains with matching attributes",
+          "build": [["retain", 1, { "bold": true }]],
+          "push": [{ "retain": 3, "attributes": { "bold": true } }],
+          "expected": [{ "retain": 4, "attributes": { "bold": true } }]
+        },
+        {
+          "name": "push(op) consecutive texts with mismatched attributes",
+          "build": [["insert", "a", { "bold": true }]],
+          "push": [{ "insert": "b" }],
+          "expectedLength": 2
+        },
+        {
+          "name": "push(op) consecutive retains with mismatched attributes",
+          "build": [["retain", 1, { "bold": true }]],
+          "push": [{ "retain": 3 }],
+          "expectedLength": 2
+        },
+        {
+          "name": "push(op) consecutive embeds with matching attributes",
+          "build": [["insert", { "embed": 1 }, { "alt": "Description" }]],
+          "push": [{ "insert": { "url": "http://quilljs.com" }, "attributes": { "alt": "Description" } }],
+          "expectedLength": 2
+        }
+      ]
+    }
+  ]
+}

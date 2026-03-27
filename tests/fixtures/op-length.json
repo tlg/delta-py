@@ -1,0 +1,26 @@
+{
+  "module": "Op",
+  "method": "length",
+  "tests": [
+    {
+      "name": "delete",
+      "op": { "delete": 5 },
+      "expected": 5
+    },
+    {
+      "name": "retain",
+      "op": { "retain": 2 },
+      "expected": 2
+    },
+    {
+      "name": "insert text",
+      "op": { "insert": "text" },
+      "expected": 4
+    },
+    {
+      "name": "insert embed",
+      "op": { "insert": { "embed": 2 } },
+      "expected": 1
+    }
+  ]
+}

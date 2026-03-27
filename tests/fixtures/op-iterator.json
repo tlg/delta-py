@@ -1,0 +1,143 @@
+{
+  "module": "OpIterator",
+  "description": "Tests for the OpIterator class. The shared 'ops' array is used as the input for all tests.",
+  "ops": [
+    { "insert": "Hello", "attributes": { "bold": true } },
+    { "retain": 3 },
+    { "insert": { "embed": 2 }, "attributes": { "src": "http://quilljs.com/" } },
+    { "delete": 4 }
+  ],
+  "tests": {
+    "hasNext": [
+      {
+        "name": "hasNext() true",
+        "ops": "shared",
+        "expected": true
+      },
+      {
+        "name": "hasNext() false",
+        "ops": [],
+        "expected": false
+      }
+    ],
+    "peekLength": [
+      {
+        "name": "peekLength() offset === 0",
+        "ops": "shared",
+        "steps": [
+          { "action": "peekLength", "expected": 5 },
+          { "action": "next" },
+          { "action": "peekLength", "expected": 3 },
+          { "action": "next" },
+          { "action": "peekLength", "expected": 1 },
+          { "action": "next" },
+          { "action": "peekLength", "expected": 4 }
+        ]
+      },
+      {
+        "name": "peekLength() offset > 0",
+        "ops": "shared",
+        "steps": [
+          { "action": "next", "length": 2 },
+          { "action": "peekLength", "expected": 3 }
+        ]
+      },
+      {
+        "name": "peekLength() no ops left",
+        "ops": [],
+        "steps": [
+          { "action": "peekLength", "expected": "Infinity" }
+        ]
+      }
+    ],
+    "peekType": [
+      {
+        "name": "peekType()",
+        "ops": "shared",
+        "steps": [
+          { "action": "peekType", "expected": "insert" },
+          { "action": "next" },
+          { "action": "peekType", "expected": "retain" },
+          { "action": "next" },
+          { "action": "peekType", "expected": "insert" },
+          { "action": "next" },
+          { "action": "peekType", "expected": "delete" },
+          { "action": "next" },
+          { "action": "peekType", "expected": "retain" }
+        ]
+      }
+    ],
+    "next": [
+      {
+        "name": "next() iterates through all ops then returns retain Infinity",
+        "ops": "shared",
+        "steps": [
+          { "action": "next", "expected": { "insert": "Hello", "attributes": { "bold": true } } },
+          { "action": "next", "expected": { "retain": 3 } },
+          { "action": "next", "expected": { "insert": { "embed": 2 }, "attributes": { "src": "http://quilljs.com/" } } },
+          { "action": "next", "expected": { "delete": 4 } },
+          { "action": "next", "expected": { "retain": "Infinity" } },
+          { "action": "next", "length": 4, "expected": { "retain": "Infinity" } },
+          { "action": "next", "expected": { "retain": "Infinity" } }
+        ]
+      },
+      {
+        "name": "next(length)",
+        "ops": "shared",
+        "steps": [
+          { "action": "next", "length": 2, "expected": { "insert": "He", "attributes": { "bold": true } } },
+          { "action": "next", "length": 10, "expected": { "insert": "llo", "attributes": { "bold": true } } },
+          { "action": "next", "length": 1, "expected": { "retain": 1 } },
+          { "action": "next", "length": 2, "expected": { "retain": 2 } }
+        ]
+      }
+    ],
+    "rest": [
+      {
+        "name": "rest() after partial consumption",
+        "ops": "shared",
+        "steps": [
+          { "action": "next", "length": 2 },
+          {
+            "action": "rest",
+            "expected": [
+              { "insert": "llo", "attributes": { "bold": true } },
+              { "retain": 3 },
+              { "insert": { "embed": 2 }, "attributes": { "src": "http://quilljs.com/" } },
+              { "delete": 4 }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rest() after more consumption",
+        "ops": "shared",
+        "consumeFirst": [2, 3],
+        "steps": [
+          { "action": "next", "length": 2 },
+          { "action": "next", "length": 3 },
+          {
+            "action": "rest",
+            "expected": [
+              { "retain": 3 },
+              { "insert": { "embed": 2 }, "attributes": { "src": "http://quilljs.com/" } },
+              { "delete": 4 }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rest() after full consumption",
+        "ops": "shared",
+        "steps": [
+          { "action": "next", "length": 2 },
+          { "action": "next", "length": 3 },
+          { "action": "next", "length": 3 },
+          { "action": "next", "length": 2 },
+          { "action": "next", "length": 4 },
+          { "action": "rest", "expected": [] }
+        ]
+      }
+    ]
+  }
+}

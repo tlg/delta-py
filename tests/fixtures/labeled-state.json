@@ -1,0 +1,162 @@
+{
+  "module": "LabeledState",
+  "tests": {
+    "canonicalizeDocument": [
+      {
+        "name": "canonicalizes an empty document to a final newline",
+        "input": [],
+        "expected": [{ "insert": "\n" }]
+      },
+      {
+        "name": "canonicalizes a document without a trailing newline",
+        "input": [{ "insert": "A" }],
+        "expected": [{ "insert": "A\n" }]
+      },
+      {
+        "name": "is idempotent on canonical documents",
+        "input": [{ "insert": "A\n" }],
+        "expected": [{ "insert": "A\n" }]
+      }
+    ],
+    "canonicalizeDocumentErrors": [
+      {
+        "name": "rejects non-document deltas (retain)",
+        "input": [{ "retain": 1 }],
+        "error": "document delta must contain only inserts"
+      },
+      {
+        "name": "rejects non-document deltas (delete)",
+        "input": [{ "delete": 1 }],
+        "error": "document delta must contain only inserts"
+      }
+    ],
+    "flattenDocumentUnits": [
+      {
+        "name": "splits string inserts into single Delta-length units and preserves embeds",
+        "input": [
+          { "insert": "AB", "attributes": { "bold": true } },
+          { "insert": { "image": "x" }, "attributes": { "alt": "img" } },
+          { "insert": "\n", "attributes": { "header": 1 } }
+        ],
+        "expected": [
+          { "value": "A", "attributes": { "bold": true } },
+          { "value": "B", "attributes": { "bold": true } },
+          { "value": { "image": "x" }, "attributes": { "alt": "img" } },
+          { "value": "\n", "attributes": { "header": 1 } }
+        ]
+      },
+      {
+        "name": "splits UTF-16 surrogate pairs into Delta-length code units",
+        "input": [{ "insert": "😀\n" }],
+        "expected": [
+          { "value": "\ud83d", "attributes": {} },
+          { "value": "\ude00", "attributes": {} },
+          { "value": "\n", "attributes": {} }
+        ]
+      }
+    ],
+    "labeledStateFromDocument": [
+      {
+        "name": "builds labeled units and gaps from a canonicalized document",
+        "input": [
+          { "insert": "A" },
+          { "insert": { "image": "x" } },
+          { "insert": "\n", "attributes": { "align": "center" } }
+        ],
+        "expectedUnits": [
+          { "id": 1, "value": "A", "attributes": {} },
+          { "id": 2, "value": { "image": "x" }, "attributes": {} },
+          { "id": 3, "value": "\n", "attributes": { "align": "center" } }
+        ],
+        "expectedGaps": [
+          { "gapId": 0, "afterUnitId": null, "beforeUnitId": 1 },
+          { "gapId": 1, "afterUnitId": 1, "beforeUnitId": 2 },
+          { "gapId": 2, "afterUnitId": 2, "beforeUnitId": 3 },
+          { "gapId": 3, "afterUnitId": 3, "beforeUnitId": null }
+        ]
+      },
+      {
+        "name": "round-trips back to a canonical document delta",
+        "input": [{ "insert": "A" }],
+        "expectedRoundTrip": [{ "insert": "A\n" }]
+      }
+    ],
+    "resolveDelta": [
+      {
+        "name": "resolves inserts, deletes, and format patches against labeled base units",
+        "base": [{ "insert": "AB\n" }],
+        "delta": [{ "retain": 1 }, { "insert": "X" }, { "delete": 1 }, { "retain": 1, "attributes": { "header": 1 } }],
+        "expectedResolved": {
+          "insertsByGap": [
+            {
+              "gap": { "gapId": 1, "afterUnitId": 1, "beforeUnitId": 2 },
+              "units": [{ "id": 4, "value": "X", "attributes": {} }]
+            }
+          ],
+          "deletedUnitIds": [2],
+          "formatPatchesByUnitId": [{ "unitId": 3, "attributes": { "header": 1 } }]
+        },
+        "expectedResult": [{ "insert": "AX" }, { "insert": "\n", "attributes": { "header": 1 } }]
+      }
+    ],
+    "resolveDeltaErrors": [
+      {
+        "name": "requires canonical base documents when resolving from a document delta",
+        "base": [{ "insert": "A" }],
+        "delta": [{ "retain": 1 }],
+        "error": "canonical document delta must end with a final newline"
+      }
+    ],
+    "replayResolvedDelta": [
+      {
+        "name": "replays inserts at their anchored base gap on descendant states",
+        "base": [{ "insert": "AB\n" }],
+        "left": [{ "insert": "Y" }],
+        "right": [{ "retain": 1 }, { "insert": "X" }],
+        "expected": [{ "insert": "YAXB\n" }]
+      },
+      {
+        "name": "replays deletes and newline formatting by surviving base unit ids",
+        "base": [{ "insert": "AB\n" }],
+        "left": [{ "insert": "Y" }],
+        "right": [{ "retain": 1 }, { "delete": 1 }, { "retain": 1, "attributes": { "align": "center" } }],
+        "expected": [{ "insert": "YA" }, { "insert": "\n", "attributes": { "align": "center" } }]
+      }
+    ],
+    "classifyGapDescendants": [
+      {
+        "name": "classifies whole-line descendants",
+        "base": [{ "insert": "A\nB\n" }],
+        "delta": [{ "retain": 2 }, { "insert": "X\nY\n" }],
+        "gapIndex": 2,
+        "expected": {
+          "wholeLinePrefixUnits": 4,
+          "trailingPartialUnits": 0,
+          "afterEdgeBlockExpressible": true
+        }
+      },
+      {
+        "name": "classifies whole-line and partial descendants",
+        "base": [{ "insert": "A\nB\n" }],
+        "delta": [{ "retain": 2 }, { "insert": "X\ny" }],
+        "gapIndex": 2,
+        "expected": {
+          "wholeLinePrefixUnits": 2,
+          "trailingPartialUnits": 1,
+          "afterEdgeBlockExpressible": false
+        }
+      },
+      {
+        "name": "classifies partial-only descendants",
+        "base": [{ "insert": "A\nB\n" }],
+        "delta": [{ "retain": 2 }, { "insert": "xy" }],
+        "gapIndex": 2,
+        "expected": {
+          "wholeLinePrefixUnits": 0,
+          "trailingPartialUnits": 2,
+          "afterEdgeBlockExpressible": false
+        }
+      }
+    ]
+  }
+}

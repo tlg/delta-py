@@ -1,0 +1,182 @@
+{
+  "module": "Delta",
+  "method": "compose",
+  "tests": [
+    {
+      "name": "insert + insert",
+      "a": [{ "insert": "A" }],
+      "b": [{ "insert": "B" }],
+      "expected": [{ "insert": "BA" }]
+    },
+    {
+      "name": "insert + retain",
+      "a": [{ "insert": "A" }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red", "font": null } }],
+      "expected": [{ "insert": "A", "attributes": { "bold": true, "color": "red" } }]
+    },
+    {
+      "name": "insert + delete",
+      "a": [{ "insert": "A" }],
+      "b": [{ "delete": 1 }],
+      "expected": []
+    },
+    {
+      "name": "delete + insert",
+      "a": [{ "delete": 1 }],
+      "b": [{ "insert": "B" }],
+      "expected": [{ "insert": "B" }, { "delete": 1 }]
+    },
+    {
+      "name": "delete + retain",
+      "a": [{ "delete": 1 }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red" } }],
+      "expected": [{ "delete": 1 }, { "retain": 1, "attributes": { "bold": true, "color": "red" } }]
+    },
+    {
+      "name": "delete + delete",
+      "a": [{ "delete": 1 }],
+      "b": [{ "delete": 1 }],
+      "expected": [{ "delete": 2 }]
+    },
+    {
+      "name": "retain + insert",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "insert": "B" }],
+      "expected": [{ "insert": "B" }, { "retain": 1, "attributes": { "color": "blue" } }]
+    },
+    {
+      "name": "retain + retain",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "retain": 1, "attributes": { "bold": true, "color": "red", "font": null } }],
+      "expected": [{ "retain": 1, "attributes": { "bold": true, "color": "red", "font": null } }]
+    },
+    {
+      "name": "retain + delete",
+      "a": [{ "retain": 1, "attributes": { "color": "blue" } }],
+      "b": [{ "delete": 1 }],
+      "expected": [{ "delete": 1 }]
+    },
+    {
+      "name": "insert in middle of text",
+      "a": [{ "insert": "Hello" }],
+      "b": [{ "retain": 3 }, { "insert": "X" }],
+      "expected": [{ "insert": "HelXlo" }]
+    },
+    {
+      "name": "insert and delete ordering",
+      "a": [{ "insert": "Hello" }],
+      "b": [{ "retain": 3 }, { "insert": "X" }, { "delete": 1 }],
+      "expected": [{ "insert": "HelXo" }]
+    },
+    {
+      "name": "insert embed",
+      "a": [{ "insert": { "embed": 1 }, "attributes": { "src": "http://quilljs.com/image.png" } }],
+      "b": [{ "retain": 1, "attributes": { "alt": "logo" } }],
+      "expected": [{ "insert": { "embed": 1 }, "attributes": { "src": "http://quilljs.com/image.png", "alt": "logo" } }]
+    },
+    {
+      "name": "retain embed",
+      "a": [{ "retain": { "figure": true }, "attributes": { "src": "http://quilljs.com/image.png" } }],
+      "b": [{ "retain": 1, "attributes": { "alt": "logo" } }],
+      "expected": [{ "retain": { "figure": true }, "attributes": { "src": "http://quilljs.com/image.png", "alt": "logo" } }]
+    },
+    {
+      "name": "delete entire text",
+      "a": [{ "retain": 4 }, { "insert": "Hello" }],
+      "b": [{ "delete": 9 }],
+      "expected": [{ "delete": 4 }]
+    },
+    {
+      "name": "retain more than length of text",
+      "a": [{ "insert": "Hello" }],
+      "b": [{ "retain": 10 }],
+      "expected": [{ "insert": "Hello" }]
+    },
+    {
+      "name": "retain empty embed",
+      "a": [{ "insert": { "embed": 1 } }],
+      "b": [{ "retain": 1 }],
+      "expected": [{ "insert": { "embed": 1 } }]
+    },
+    {
+      "name": "remove all attributes",
+      "a": [{ "insert": "A", "attributes": { "bold": true } }],
+      "b": [{ "retain": 1, "attributes": { "bold": null } }],
+      "expected": [{ "insert": "A" }]
+    },
+    {
+      "name": "remove all embed attributes",
+      "a": [{ "insert": { "embed": 2 }, "attributes": { "bold": true } }],
+      "b": [{ "retain": 1, "attributes": { "bold": null } }],
+      "expected": [{ "insert": { "embed": 2 } }]
+    },
+    {
+      "name": "retain start optimization",
+      "a": [
+        { "insert": "A", "attributes": { "bold": true } },
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } },
+        { "delete": 1 }
+      ],
+      "b": [{ "retain": 3 }, { "insert": "D" }],
+      "expected": [
+        { "insert": "A", "attributes": { "bold": true } },
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } },
+        { "insert": "D" },
+        { "delete": 1 }
+      ]
+    },
+    {
+      "name": "retain start optimization split",
+      "a": [
+        { "insert": "A", "attributes": { "bold": true } },
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } },
+        { "retain": 5 },
+        { "delete": 1 }
+      ],
+      "b": [{ "retain": 4 }, { "insert": "D" }],
+      "expected": [
+        { "insert": "A", "attributes": { "bold": true } },
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } },
+        { "retain": 1 },
+        { "insert": "D" },
+        { "retain": 4 },
+        { "delete": 1 }
+      ]
+    },
+    {
+      "name": "retain end optimization",
+      "a": [
+        { "insert": "A", "attributes": { "bold": true } },
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } }
+      ],
+      "b": [{ "delete": 1 }],
+      "expected": [
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } }
+      ]
+    },
+    {
+      "name": "retain end optimization join",
+      "a": [
+        { "insert": "A", "attributes": { "bold": true } },
+        { "insert": "B" },
+        { "insert": "C", "attributes": { "bold": true } },
+        { "insert": "D" },
+        { "insert": "E", "attributes": { "bold": true } },
+        { "insert": "F" }
+      ],
+      "b": [{ "retain": 1 }, { "delete": 1 }],
+      "expected": [
+        { "insert": "AC", "attributes": { "bold": true } },
+        { "insert": "D" },
+        { "insert": "E", "attributes": { "bold": true } },
+        { "insert": "F" }
+      ]
+    }
+  ]
+}

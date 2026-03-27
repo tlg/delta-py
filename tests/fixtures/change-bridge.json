@@ -1,0 +1,103 @@
+{
+  "module": "Change",
+  "tests": {
+    "resolveBlockDelta": [
+      {
+        "name": "resolves moves against the post-delta projected state",
+        "document": [{ "insert": "A\nB\nC\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "expected": [
+          {
+            "left": {
+              "gap": { "gapId": 2, "afterUnitId": 2, "beforeUnitId": 3 },
+              "newlineUnit": { "id": 2, "value": "\n", "attributes": {} }
+            },
+            "right": {
+              "gap": { "gapId": 4, "afterUnitId": 4, "beforeUnitId": 5 },
+              "newlineUnit": { "id": 4, "value": "\n", "attributes": {} }
+            },
+            "before": {
+              "gap": { "gapId": 0, "afterUnitId": null, "beforeUnitId": 1 },
+              "newlineUnit": null
+            }
+          }
+        ]
+      },
+      {
+        "name": "resolves sequential moves on the state after prior moves",
+        "document": [{ "insert": "A\nB\nC\nD\n" }],
+        "blockDeltaFromMoves": [
+          { "index": 3, "count": 1, "before": 0 },
+          { "index": 2, "count": 1, "before": 1 }
+        ],
+        "expectedLength": 2,
+        "expectedResult": [{ "insert": "D\nB\nA\nC\n" }]
+      }
+    ],
+    "replayResolvedBlockMove": [
+      {
+        "name": "replays a resolved move on the same state without restoration",
+        "document": [{ "insert": "A\nB\nC\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "expectedResult": [{ "insert": "B\nA\nC\n" }],
+        "expectedRestorations": [false, false, false]
+      },
+      {
+        "name": "restores a deleted source-start boundary before replaying the move",
+        "document": [{ "insert": "A\nB\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "preDelta": [{ "retain": 1 }, { "delete": 1 }],
+        "expectedResult": [{ "insert": "B\nA\n" }],
+        "expectedRestorations": [true, false, false]
+      },
+      {
+        "name": "restores a deleted source-end boundary before replaying the move",
+        "document": [{ "insert": "A\nB\nC\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "preDelta": [{ "retain": 3 }, { "delete": 1 }],
+        "expectedResult": [{ "insert": "B\nA\nC\n" }],
+        "expectedRestorations": [false, true, false]
+      },
+      {
+        "name": "restores a deleted destination boundary before replaying the move",
+        "document": [{ "insert": "A\nB\nC\nD\n" }],
+        "blockDelta": [{ "retain": 3 }, { "move": { "count": 1, "before": 1 } }],
+        "preDelta": [{ "retain": 1 }, { "delete": 1 }],
+        "expectedResult": [{ "insert": "A\nD\nB\nC\n" }],
+        "expectedRestorations": [false, false, true]
+      },
+      {
+        "name": "keeps inserts at the source-start boundary outside the moved slice",
+        "document": [{ "insert": "A\nB\nC\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "preDelta": [{ "retain": 2 }, { "insert": "X\n" }],
+        "expectedResult": [{ "insert": "B\nA\nX\nC\n" }]
+      },
+      {
+        "name": "keeps inserts at the source-end boundary outside the moved slice",
+        "document": [{ "insert": "A\nB\nC\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "preDelta": [{ "retain": 4 }, { "insert": "\n" }],
+        "expectedResult": [{ "insert": "B\nA\n\nC\n" }]
+      },
+      {
+        "name": "moves inserts at strict interior boundaries with the slice",
+        "document": [{ "insert": "A\nB\nC\nD\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 2, "before": 0 } }],
+        "preDelta": [{ "retain": 4 }, { "insert": "X\n" }],
+        "expectedResult": [{ "insert": "B\nX\nC\nA\nD\n" }]
+      }
+    ],
+    "ensureResolvedBlockMoves": [
+      {
+        "name": "restores missing boundaries idempotently",
+        "document": [{ "insert": "A\nB\n" }],
+        "blockDelta": [{ "retain": 1 }, { "move": { "count": 1, "before": 0 } }],
+        "preDelta": [{ "retain": 1 }, { "delete": 1 }],
+        "expectedAfterFirst": [{ "insert": "A\nB\n" }],
+        "firstRestorations": [true, false, false],
+        "secondRestorations": [false, false, false]
+      }
+    ]
+  }
+}

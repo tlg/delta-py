@@ -1,0 +1,75 @@
+{
+  "module": "Project",
+  "tests": {
+    "projectBlockSpans": [
+      {
+        "name": "projects an empty document as one empty line span after canonicalization",
+        "document": [],
+        "expected": [{ "from": 0, "to": 1 }]
+      },
+      {
+        "name": "projects text lines to contiguous spans",
+        "document": [{ "insert": "A\nB\n" }],
+        "expected": [{ "from": 0, "to": 2 }, { "from": 2, "to": 4 }]
+      },
+      {
+        "name": "projects embed-only lines as length-2 blocks",
+        "document": [{ "insert": { "image": "x" } }, { "insert": "\n", "attributes": { "align": "center" } }],
+        "expected": [{ "from": 0, "to": 2 }]
+      },
+      {
+        "name": "projects UTF-16 surrogate-pair lines using Delta-length boundaries",
+        "document": [{ "insert": "😀\nA\n" }],
+        "expected": [{ "from": 0, "to": 3 }, { "from": 3, "to": 5 }]
+      }
+    ],
+    "blockBoundaries": [
+      {
+        "name": "empty document",
+        "document": [],
+        "expected": [0, 1]
+      },
+      {
+        "name": "text lines",
+        "document": [{ "insert": "A\nB\n" }],
+        "expected": [0, 2, 4]
+      },
+      {
+        "name": "UTF-16 surrogate pairs",
+        "document": [{ "insert": "😀\nA\n" }],
+        "expected": [0, 3, 5]
+      }
+    ],
+    "projectLabeledBlockSpans": [
+      {
+        "name": "projects labeled state spans with their boundary anchors",
+        "document": [{ "insert": "A\nB\n" }],
+        "expected": [
+          {
+            "from": 0,
+            "to": 2,
+            "leftGap": { "gapId": 0, "afterUnitId": null, "beforeUnitId": 1 },
+            "rightGap": { "gapId": 2, "afterUnitId": 2, "beforeUnitId": 3 }
+          },
+          {
+            "from": 2,
+            "to": 4,
+            "leftGap": { "gapId": 2, "afterUnitId": 2, "beforeUnitId": 3 },
+            "rightGap": { "gapId": 4, "afterUnitId": 4, "beforeUnitId": null }
+          }
+        ]
+      }
+    ],
+    "blockBoundaryGapAnchors": [
+      {
+        "name": "returns gap anchors at block boundaries",
+        "document": [{ "insert": "A\nB\n" }],
+        "expected": [
+          { "gapId": 0, "afterUnitId": null, "beforeUnitId": 1 },
+          { "gapId": 2, "afterUnitId": 2, "beforeUnitId": 3 },
+          { "gapId": 4, "afterUnitId": 4, "beforeUnitId": null }
+        ]
+      }
+    ]
+  }
+}
