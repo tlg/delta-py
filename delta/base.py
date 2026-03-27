@@ -1,10 +1,7 @@
 import copy
-import diff_match_patch
+from functools import reduce
 
-try:
-    from functools import reduce
-except:
-    pass
+import diff_match_patch
 
 from . import op
 
@@ -15,39 +12,31 @@ DIFF_INSERT = 1
 DIFF_DELETE = -1
 
 
-def merge(a, b):
-    return copy.deepcopy(a or {}).update(b or {})
-
-
 def differ(a, b, timeout=1):
-    differ = diff_match_patch.diff_match_patch()
-    differ.Diff_Timeout = timeout
-    result = differ.diff_main(a, b)
-    differ.diff_cleanupSemantic(result)
+    dmp = diff_match_patch.diff_match_patch()
+    dmp.Diff_Timeout = timeout
+    result = dmp.diff_main(a, b)
+    dmp.diff_cleanupSemantic(result)
     return result
-
-
-def smallest(*parts):
-    return min(filter(lambda x: x is not None, parts))
 
 
 def get_embed_type_and_data(a, b):
     if not isinstance(a, dict) or a is None:
-        raise Exception('cannot retain a ', type(a))
+        raise TypeError(f'cannot retain a {type(a).__name__}')
     if not isinstance(b, dict) or b is None:
-        raise Exception('cannot retain b ', type(b))
+        raise TypeError(f'cannot retain a {type(b).__name__}')
 
     embed_type = next(iter(a))
-    if not embed_type or embed_type != next(iter(b)):
-        raise Exception('embed types not matched: ',
-                        embed_type, ' != ', next(iter(b)))
+    b_type = next(iter(b))
+    if not embed_type or embed_type != b_type:
+        raise ValueError(f'embed types not matched: {embed_type} != {b_type}')
     return [embed_type, a[embed_type], b[embed_type]]
 
 
 handlers = {}
 
 
-class Delta(object):
+class Delta:
 
     @staticmethod
     def register_embed(embed_type, handler):
@@ -55,14 +44,13 @@ class Delta(object):
 
     @staticmethod
     def unregister_embed(embed_type):
-        if embed_type in handlers:
-            handlers.pop(embed_type)
+        handlers.pop(embed_type, None)
 
     @staticmethod
     def get_handler(embed_type):
         handler = handlers.get(embed_type)
         if handler is None:
-            raise Exception("no handlers for embed type ", embed_type)
+            raise ValueError(f'no handlers for embed type "{embed_type}"')
         return handler
 
     def __init__(self, ops=None, **attrs):
@@ -75,10 +63,10 @@ class Delta(object):
         return self.ops == other.ops
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.ops)
+        return f'{self.__class__.__name__}({self.ops})'
 
     def insert(self, text, **attrs):
-        if text == "":
+        if text == '':
             return self
         new_op = {'insert': text}
         if attrs:
@@ -101,11 +89,11 @@ class Delta(object):
     def push(self, operation):
         index = len(self.ops)
         new_op = copy.deepcopy(operation)
-        try:
-            last_op = self.ops[index - 1]
-        except IndexError:
+        if index == 0:
             self.ops.append(new_op)
             return self
+
+        last_op = self.ops[index - 1]
 
         if op.type(new_op) == op.type(last_op) == 'delete':
             last_op['delete'] += new_op['delete']
@@ -113,11 +101,10 @@ class Delta(object):
 
         if op.type(last_op) == 'delete' and op.type(new_op) == 'insert':
             index -= 1
-            try:
-                last_op = self.ops[index - 1]
-            except IndexError:
+            if index == 0:
                 self.ops.insert(0, new_op)
                 return self
+            last_op = self.ops[index - 1]
 
         if new_op.get('attributes') == last_op.get('attributes'):
             if isinstance(new_op.get('insert'), str) and isinstance(last_op.get('insert'), str):
@@ -127,7 +114,7 @@ class Delta(object):
             if isinstance(new_op.get('retain'), (int, float)) and isinstance(last_op.get('retain'), (int, float)):
                 last_op['retain'] += new_op['retain']
                 if isinstance(new_op.get('attributes'), dict):
-                    last_op['attributes'] = new_op.get('attributes')
+                    last_op['attributes'] = new_op['attributes']
                 return self
 
         self.ops.insert(index, new_op)
@@ -148,18 +135,16 @@ class Delta(object):
         return delta
 
     def chop(self):
-        try:
+        if self.ops:
             last_op = self.ops[-1]
             if isinstance(last_op.get('retain'), (int, float)) and not last_op.get('attributes'):
                 self.ops.pop()
-        except IndexError:
-            pass
         return self
 
     def document(self):
         parts = []
-        for op in self:
-            insert = op.get('insert')
+        for o in self:
+            insert = o.get('insert')
             if insert or insert == '':
                 if isinstance(insert, str):
                     parts.append(insert)
@@ -167,45 +152,39 @@ class Delta(object):
                     parts.append(NULL_CHARACTER)
             else:
                 raise ValueError(
-                    "document() can only be called on Deltas that have only insert ops")
-        return "".join(parts)
+                    'document() can only be called on Deltas that have only insert ops')
+        return ''.join(parts)
 
     def __iter__(self):
         return iter(self.ops)
 
-    def __getitem__(self, index):
-        if isinstance(index, int):
-            start = index
-            stop = index + 1
-
-        elif isinstance(index, slice):
-            start = index.start or 0
-            stop = index.stop or None
-
-            if index.step is not None:
-                raise ValueError("no support for step slices")
-
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            start = item
+            stop = item + 1
+        elif isinstance(item, slice):
+            start = item.start or 0
+            stop = item.stop
+            if item.step is not None:
+                raise ValueError('no support for step slices')
         else:
-            raise TypeError("Invalid argument type.")
+            raise TypeError('Invalid argument type.')
 
         if (start is not None and start < 0) or (stop is not None and stop < 0):
-            raise ValueError("no support for negative indexing.")
+            raise ValueError('no support for negative indexing.')
 
         ops = []
-        iter = self.iterator()
-        index = 0
-        while iter.has_next():
-            if stop is not None and index >= stop:
+        it = self.iterator()
+        pos = 0
+        while it.has_next():
+            if stop is not None and pos >= stop:
                 break
-            if index < start:
-                next_op = iter.next(start - index)
+            if pos < start:
+                next_op = it.next(start - pos)
             else:
-                if stop is not None:
-                    next_op = iter.next(stop-index)
-                else:
-                    next_op = iter.next()
+                next_op = it.next(stop - pos if stop is not None else None)
                 ops.append(next_op)
-            index += op.length(next_op)
+            pos += op.length(next_op)
 
         return Delta(ops)
 
@@ -217,11 +196,11 @@ class Delta(object):
 
     def change_length(self):
         length = 0
-        for operator in self:
-            if op.type(operator) == 'delete':
-                length -= operator['delete']
-            elif op.type(operator) == 'insert':
-                length += op.length(operator)
+        for o in self:
+            if op.type(o) == 'delete':
+                length -= o['delete']
+            elif op.type(o) == 'insert':
+                length += op.length(o)
         return length
 
     def length(self):
@@ -233,13 +212,15 @@ class Delta(object):
         ops = []
         first_other = other_it.peek()
 
-        if first_other and isinstance(first_other.get('retain'), (int, float)) and first_other.get('attributes') is None:
-            first_left = first_other.get('retain')
+        if (first_other
+                and isinstance(first_other.get('retain'), (int, float))
+                and first_other.get('attributes') is None):
+            first_left = first_other['retain']
             while self_it.peek_type() == 'insert' and self_it.peek_length() <= first_left:
                 first_left -= self_it.peek_length()
                 ops.append(self_it.next())
-            if (first_other.get('retain') - first_left > 0):
-                other_it.next(first_other.get('retain') - first_left)
+            if first_other['retain'] - first_left > 0:
+                other_it.next(first_other['retain'] - first_left)
 
         delta = self.__class__(ops)
         while self_it.has_next() or other_it.has_next():
@@ -248,51 +229,50 @@ class Delta(object):
             elif self_it.peek_type() == 'delete':
                 delta.push(self_it.next())
             else:
-                length = min(self_it.peek_length(),
-                             other_it.peek_length())
+                length = min(self_it.peek_length(), other_it.peek_length())
                 self_op = self_it.next(length)
                 other_op = other_it.next(length)
                 if other_op.get('retain'):
                     new_op = {}
                     if isinstance(self_op.get('retain'), (int, float)):
-                        new_op['retain'] = length if isinstance(other_op.get('retain'), (int, float)) else other_op.get('retain')
-                    else:
-                        if isinstance(other_op.get('retain'), (int, float)):
-                            if self_op.get('retain') is None:
-                                new_op['insert'] = self_op.get('insert')
-                            else:
-                                new_op['retain'] = self_op.get('retain')
+                        new_op['retain'] = (
+                            length if isinstance(other_op.get('retain'), (int, float))
+                            else other_op['retain']
+                        )
+                    elif isinstance(other_op.get('retain'), (int, float)):
+                        if self_op.get('retain') is None:
+                            new_op['insert'] = self_op.get('insert')
                         else:
-                            action = self_op.get(
-                                "retain") is None and 'insert' or 'retain'
-                            [embed_type, self_data, other_data] = get_embed_type_and_data(
-                                self_op.get(action), other_op.get('retain'))
-                            handler = Delta.get_handler(embed_type)
-                            new_op[action] = {}
-                            new_op[action][embed_type] = handler.compose(
+                            new_op['retain'] = self_op.get('retain')
+                    else:
+                        action = 'insert' if self_op.get('retain') is None else 'retain'
+                        embed_type, self_data, other_data = get_embed_type_and_data(
+                            self_op.get(action), other_op.get('retain'))
+                        handler = Delta.get_handler(embed_type)
+                        new_op[action] = {
+                            embed_type: handler.compose(
                                 self_data, other_data, action == 'retain')
+                        }
 
-                    # Preserve null when composing with a retain, otherwise remove it for inserts
-                    attributes = op.compose(self_op.get('attributes'), other_op.get(
-                        'attributes'), isinstance(self_op.get('retain'), (int, float)))
-                    if (attributes):
+                    attributes = op.compose(
+                        self_op.get('attributes'),
+                        other_op.get('attributes'),
+                        isinstance(self_op.get('retain'), (int, float)))
+                    if attributes:
                         new_op['attributes'] = attributes
                     delta.push(new_op)
 
                     if not other_it.has_next() and delta.ops[-1] == new_op:
                         rest = Delta(self_it.rest())
-
                         return delta.concat(rest).chop()
-                # Other op should be delete, we could be an insert or retain
-                # Insert + delete cancels out
-                elif op.type(other_op) == 'delete' and isinstance(self_op.get('retain'), (int, float, dict)):
+                elif (op.type(other_op) == 'delete'
+                      and isinstance(self_op.get('retain'), (int, float, dict))):
                     delta.push(other_op)
         return delta.chop()
 
     def diff(self, other):
         """
-        Returns a diff of two *documents*, which is defined as a delta
-        with only inserts.
+        Returns a diff of two *documents* (Deltas with only insert ops).
         """
         if self.ops == other.ops:
             return self.__class__()
@@ -315,49 +295,52 @@ class Delta(object):
                     self_it.next(op_length)
                     delta.delete(op_length)
                 elif code == DIFF_EQUAL:
-                    op_length = min(self_it.peek_length(),
-                                    other_it.peek_length(), length)
+                    op_length = min(
+                        self_it.peek_length(),
+                        other_it.peek_length(),
+                        length)
                     self_op = self_it.next(op_length)
                     other_op = other_it.next(op_length)
                     if self_op.get('insert') == other_op.get('insert'):
-                        attributes = op.diff(self_op.get(
-                            'attributes'), other_op.get('attributes'))
+                        attributes = op.diff(
+                            self_op.get('attributes'),
+                            other_op.get('attributes'))
                         delta.retain(op_length, **(attributes or {}))
                     else:
                         delta.push(other_op).delete(op_length)
                 else:
                     raise RuntimeError(
-                        "Diff library returned unknown op code: %r", code)
+                        f'Diff library returned unknown op code: {code!r}')
                 if op_length == 0:
                     return
                 length -= op_length
         return delta.chop()
 
     def each_line(self, fn, newline='\n'):
-        for line, attributes, index in self.iter_lines():
+        for line, attributes, index in self.iter_lines(newline):
             if fn(line, attributes, index) is False:
                 break
 
     def iter_lines(self, newline='\n'):
-        iter = self.iterator()
+        it = self.iterator()
         line = self.__class__()
         i = 0
-        while iter.has_next():
-            if iter.peek_type() != 'insert':
+        while it.has_next():
+            if it.peek_type() != 'insert':
                 return
-            self_op = iter.peek()
-            start = op.length(self_op) - iter.peek_length()
-            if isinstance(self_op.get('insert'), str):
-                index = self_op['insert'][start:].find(newline)
+            current_op = it.peek()
+            start = op.length(current_op) - it.peek_length()
+            if isinstance(current_op.get('insert'), str):
+                nl_index = current_op['insert'][start:].find(newline)
             else:
-                index = -1
+                nl_index = -1
 
-            if index < 0:
-                line.push(iter.next())
-            elif index > 0:
-                line.push(iter.next(index))
+            if nl_index < 0:
+                line.push(it.next())
+            elif nl_index > 0:
+                line.push(it.next(nl_index))
             else:
-                attributes = iter.next(1).get('attributes', {})
+                attributes = it.next(1).get('attributes', {})
                 yield line, attributes, i
                 i += 1
                 line = Delta()
@@ -370,28 +353,32 @@ class Delta(object):
         def fn(base_index, operator):
             if op.type(operator) == 'insert':
                 inverted.delete(op.length(operator))
-            elif isinstance(operator.get('retain'), (int, float)) and operator.get("attributes") is None:
-                inverted.retain(operator.get("retain"))
-                return base_index + operator.get("retain")
+            elif isinstance(operator.get('retain'), (int, float)) and operator.get('attributes') is None:
+                inverted.retain(operator['retain'])
+                return base_index + operator['retain']
             elif op.type(operator) == 'delete' or isinstance(operator.get('retain'), (int, float)):
-                length = int(operator.get("delete") or operator.get("retain"))
-
-                for base_operator in base[base_index:base_index + length]:
+                length = int(operator.get('delete') or operator.get('retain'))
+                for base_op in base[base_index:base_index + length]:
                     if op.type(operator) == 'delete':
-                        inverted.push(base_operator)
-                    elif operator.get('retain') and operator.get("attributes"):
-                        inverted.retain(op.length(base_operator), **(op.invert(
-                            operator.get("attributes"), base_operator.get("attributes")) or {}))
+                        inverted.push(base_op)
+                    elif operator.get('retain') and operator.get('attributes'):
+                        inverted.retain(
+                            op.length(base_op),
+                            **(op.invert(
+                                operator.get('attributes'),
+                                base_op.get('attributes')) or {}))
                 return base_index + length
             elif isinstance(operator.get('retain'), dict):
-                base_operator = op.iterator(base[base_index].ops).next()
-                [embed_type, op_data, base_op_data] = get_embed_type_and_data(
-                    operator.get('retain'), base_operator.get('insert'))
+                base_op = op.iterator(base[base_index].ops).next()
+                embed_type, op_data, base_op_data = get_embed_type_and_data(
+                    operator['retain'], base_op.get('insert'))
                 handler = Delta.get_handler(embed_type)
-                new_embed = {}
-                new_embed[embed_type] = handler.invert(op_data, base_op_data)
-                inverted.retain(new_embed, **(op.invert(operator.get(
-                    'attributes'), base_operator.get('attributes')) or {}))
+                new_embed = {embed_type: handler.invert(op_data, base_op_data)}
+                inverted.retain(
+                    new_embed,
+                    **(op.invert(
+                        operator.get('attributes'),
+                        base_op.get('attributes')) or {}))
                 return base_index + 1
 
             return base_index
@@ -413,42 +400,45 @@ class Delta(object):
             elif other_it.peek_type() == 'insert':
                 delta.push(other_it.next())
             else:
-                length = min(self_it.peek_length(),
-                             other_it.peek_length())
+                length = min(self_it.peek_length(), other_it.peek_length())
                 self_op = self_it.next(length)
                 other_op = other_it.next(length)
                 if self_op.get('delete'):
-                    # Our delete either makes their delete redundant or removes their retain
                     continue
                 elif other_op.get('delete'):
                     delta.push(other_op)
                 else:
                     self_data = self_op.get('retain')
                     other_data = other_op.get('retain')
-                    transformed_data = isinstance(
-                        other_data, dict) and other_data or length
+                    transformed_data = other_data if isinstance(other_data, dict) else length
 
                     if isinstance(self_data, dict) and isinstance(other_data, dict):
                         embed_type = next(iter(self_data))
                         if embed_type == next(iter(other_data)):
                             handler = Delta.get_handler(embed_type)
                             if handler:
-                                transformed_data = {}
-                                transformed_data[embed_type] = handler.transform(
-                                    self_data.get(embed_type), other_data.get(embed_type), priority)
-                    # We retain either their retain or insert
-                    delta.retain(transformed_data, **(op.transform(self_op.get('attributes'),
-                                                                   other_op.get('attributes'), priority) or {}))
+                                transformed_data = {
+                                    embed_type: handler.transform(
+                                        self_data[embed_type],
+                                        other_data[embed_type],
+                                        priority)
+                                }
+                    delta.retain(
+                        transformed_data,
+                        **(op.transform(
+                            self_op.get('attributes'),
+                            other_op.get('attributes'),
+                            priority) or {}))
 
         return delta.chop()
 
     def transform_position(self, index, priority=False):
-        iter = self.iterator()
+        it = self.iterator()
         offset = 0
-        while iter.has_next() and offset <= index:
-            length = iter.peek_length()
-            next_type = iter.peek_type()
-            iter.next()
+        while it.has_next() and offset <= index:
+            length = it.peek_length()
+            next_type = it.peek_type()
+            it.next()
             if next_type == 'delete':
                 index -= min(length, index - offset)
                 continue

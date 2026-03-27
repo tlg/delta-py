@@ -1,52 +1,35 @@
-
 # Delta (Python Port)
 
-Python port of the javascript Delta library for QuillJS: https://github.com/quilljs/delta
+Python port of the [quill-delta](https://github.com/quilljs/delta) library for rich text operational transformation.
 
-Some basic pythonizing has been done, but mostly it works exactly like the above library.
+Implements the same OT primitives as the TypeScript version: `compose`, `transform`, `invert`, `diff`, with full support for custom embed handlers. Both implementations share the same [JSON test fixtures](tests/fixtures/) to guarantee identical behavior.
 
-There is no other python specific documentation at this time, sorry.  Please see the tests
-for reference examples.
+## Usage
 
-# Rendering HTML in Python
+```python
+from delta import Delta
 
-This library includes a module `delta.html` that renders html from an operation list,
-allowing you to render Quill Delta operations in full from a Python server.
+# Build a document
+doc = Delta().insert('Hello ', bold=True).insert('World\n')
 
-For example:
+# Apply a change
+change = Delta().retain(6).insert('Beautiful ')
+result = doc.compose(change)
 
-    from delta import html
+# Transform concurrent edits
+a = Delta().insert('A')
+b = Delta().insert('B')
+b_prime = a.transform(b, priority=True)
 
-    ops = [ 
-        { "insert":"Quill\nEditor\n\n" },
-        { "insert": "bold",
-          "attributes": {"bold": True}},
-        { "insert":" and the " },
-        { "insert":"italic",
-          "attributes": { "italic": True }},
-        { "insert":"\n\nNormal\n" },
-    ]
-
-    html.render(ops)
-
-Result (line formatting added for readability):
-    
-    <p>Quill</p>
-    <p>Editor</p>
-    <p><br></p>
-    <p><strong>bold</strong> and the <em>italic</em></p>
-    <p><br></p>
-    <p>Normal</p>
-
-[See test_html.py](tests/test_html.py) for more examples.
-
-# Developing
+# Invert a change
+inverse = change.invert(doc)
+assert doc.compose(change).compose(inverse) == doc
+```
 
 ## Tests
 
-    > python setup.py test
+```
+pytest tests/
+```
 
-or 
-
-    > py.test
-
+Test cases in `tests/fixtures/` are shared with the TypeScript implementation. Non-fixture tests cover immutability and callback behavior.
