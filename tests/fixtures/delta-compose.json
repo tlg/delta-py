@@ -178,5 +178,17 @@
         { "insert": "F" }
       ]
     }
+    ,{
+      "name": "insert + retain across emoji",
+      "a": [{ "insert": "😀X" }],
+      "b": [{ "retain": 2 }, { "retain": 1, "attributes": { "bold": true } }],
+      "expected": [{ "insert": "😀" }, { "insert": "X", "attributes": { "bold": true } }]
+    },
+    {
+      "name": "insert in middle of emoji text",
+      "a": [{ "insert": "😀Z" }],
+      "b": [{ "retain": 2 }, { "insert": "Y" }],
+      "expected": [{ "insert": "😀YZ" }]
+    }
   ]
 }

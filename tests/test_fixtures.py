@@ -10,6 +10,8 @@ import pytest
 from delta import Delta
 from delta import op
 
+from tests.embed_handlers import registered_embed_handler
+
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
@@ -20,6 +22,28 @@ def load_fixture(name):
 
 def delta_from_ops(ops):
     return Delta(ops)
+
+
+def embed_fixture_groups(fixture):
+    """Embed fixtures come grouped per handler under `embedFixtures`
+    (single-group files use a top-level `embedHandler` instead)."""
+    if isinstance(fixture.get("embedFixtures"), list):
+        return fixture["embedFixtures"]
+    if fixture.get("embedHandler"):
+        return [fixture]
+    return []
+
+
+def flatten_embed_tests(fixture, key="tests"):
+    return [
+        (group["embedHandler"], test)
+        for group in embed_fixture_groups(fixture)
+        for test in group.get(key, [])
+    ]
+
+
+def embed_test_ids(cases):
+    return [f"{handler}: {test['name']}" for handler, test in cases]
 
 
 def build_delta(steps):
@@ -45,27 +69,6 @@ def build_delta(steps):
         elif method == "delete":
             getattr(d, method)(args[0])
     return d
-
-
-def register_delta_embed():
-    class DeltaHandler:
-        @staticmethod
-        def compose(a, b, *_args):
-            return Delta(a).compose(Delta(b)).ops
-
-        @staticmethod
-        def transform(a, b, priority=False):
-            return Delta(a).transform(Delta(b), priority).ops
-
-        @staticmethod
-        def invert(a, b):
-            return Delta(a).invert(Delta(b)).ops
-
-    Delta.register_embed("delta", DeltaHandler)
-
-
-def unregister_delta_embed():
-    Delta.unregister_embed("delta")
 
 
 # ── Op.length ──
@@ -174,43 +177,37 @@ class TestDeltaCompose:
 
 class TestDeltaComposeEmbed:
     fixture = load_fixture("delta-compose-embed.json")
+    cases = flatten_embed_tests(fixture)
+    error_cases = flatten_embed_tests(fixture, "errorTests")
 
-    def setup_method(self):
-        register_delta_embed()
-
-    def teardown_method(self):
-        unregister_delta_embed()
-
-    @pytest.mark.parametrize(
-        "test", fixture["tests"], ids=[t["name"] for t in fixture["tests"]]
-    )
-    def test_compose_embed(self, test):
-        a = delta_from_ops(test["a"])
-        b = delta_from_ops(test["b"])
-        expected = delta_from_ops(test["expected"])
-        assert a.compose(b) == expected
+    @pytest.mark.parametrize("case", cases, ids=embed_test_ids(cases))
+    def test_compose_embed(self, case):
+        handler, test = case
+        with registered_embed_handler(handler):
+            a = delta_from_ops(test["a"])
+            b = delta_from_ops(test["b"])
+            expected = delta_from_ops(test["expected"])
+            assert a.compose(b) == expected
 
     @pytest.mark.parametrize(
-        "test",
-        fixture.get("errorTests", []),
-        ids=[t["name"] for t in fixture.get("errorTests", [])],
+        "case", error_cases, ids=embed_test_ids(error_cases)
     )
-    def test_compose_embed_errors(self, test):
-        a = delta_from_ops(test["a"])
-        b = delta_from_ops(test["b"])
-        with pytest.raises(Exception):
-            a.compose(b)
+    def test_compose_embed_errors(self, case):
+        handler, test = case
+        with registered_embed_handler(handler):
+            a = delta_from_ops(test["a"])
+            b = delta_from_ops(test["b"])
+            with pytest.raises(Exception):
+                a.compose(b)
 
 
 class TestDeltaComposeEmbedNoHandler:
     fixture = load_fixture("delta-compose-embed.json")
+    cases = flatten_embed_tests(fixture, "errorTestsNoHandler")
 
-    @pytest.mark.parametrize(
-        "test",
-        fixture.get("errorTestsNoHandler", []),
-        ids=[t["name"] for t in fixture.get("errorTestsNoHandler", [])],
-    )
-    def test_compose_no_handler(self, test):
+    @pytest.mark.parametrize("case", cases, ids=embed_test_ids(cases))
+    def test_compose_no_handler(self, case):
+        _handler, test = case
         a = delta_from_ops(test["a"])
         b = delta_from_ops(test["b"])
         with pytest.raises(Exception):
@@ -244,6 +241,23 @@ class TestDeltaDiff:
             a.diff(b)
 
 
+class TestDeltaDiffEmbed:
+    fixture = load_fixture("delta-diff-embed.json")
+    cases = flatten_embed_tests(fixture)
+
+    @pytest.mark.parametrize("case", cases, ids=embed_test_ids(cases))
+    def test_diff_embed(self, case):
+        handler, test = case
+        with registered_embed_handler(handler):
+            a = delta_from_ops(test["a"])
+            b = delta_from_ops(test["b"])
+            expected = delta_from_ops(test["expected"])
+            actual = a.diff(b)
+            assert actual == expected
+            if test.get("verifyCompose", True):
+                assert a.compose(actual) == b
+
+
 # ── Delta transform ──
 
 
@@ -262,21 +276,16 @@ class TestDeltaTransform:
 
 class TestDeltaTransformEmbed:
     fixture = load_fixture("delta-transform-embed.json")
+    cases = flatten_embed_tests(fixture)
 
-    def setup_method(self):
-        register_delta_embed()
-
-    def teardown_method(self):
-        unregister_delta_embed()
-
-    @pytest.mark.parametrize(
-        "test", fixture["tests"], ids=[t["name"] for t in fixture["tests"]]
-    )
-    def test_transform_embed(self, test):
-        a = delta_from_ops(test["a"])
-        b = delta_from_ops(test["b"])
-        expected = delta_from_ops(test["expected"])
-        assert a.transform(b, test["priority"]) == expected
+    @pytest.mark.parametrize("case", cases, ids=embed_test_ids(cases))
+    def test_transform_embed(self, case):
+        handler, test = case
+        with registered_embed_handler(handler):
+            a = delta_from_ops(test["a"])
+            b = delta_from_ops(test["b"])
+            expected = delta_from_ops(test["expected"])
+            assert a.transform(b, test["priority"]) == expected
 
 
 # ── Delta transformPosition ──
@@ -315,35 +324,31 @@ class TestDeltaInvert:
 
 class TestDeltaInvertEmbed:
     fixture = load_fixture("delta-invert-embed.json")
+    cases = flatten_embed_tests(fixture)
+    error_cases = flatten_embed_tests(fixture, "errorTests")
 
-    def setup_method(self):
-        register_delta_embed()
-
-    def teardown_method(self):
-        unregister_delta_embed()
-
-    @pytest.mark.parametrize(
-        "test", fixture["tests"], ids=[t["name"] for t in fixture["tests"]]
-    )
-    def test_invert_embed(self, test):
-        delta = delta_from_ops(test["delta"])
-        base = delta_from_ops(test["base"])
-        expected = delta_from_ops(test["expected"])
-        inverted = delta.invert(base)
-        assert inverted == expected
-        if test.get("verifyRoundTrip"):
-            assert base.compose(delta).compose(inverted) == base
+    @pytest.mark.parametrize("case", cases, ids=embed_test_ids(cases))
+    def test_invert_embed(self, case):
+        handler, test = case
+        with registered_embed_handler(handler):
+            delta = delta_from_ops(test["delta"])
+            base = delta_from_ops(test["base"])
+            expected = delta_from_ops(test["expected"])
+            inverted = delta.invert(base)
+            assert inverted == expected
+            if test.get("verifyRoundTrip"):
+                assert base.compose(delta).compose(inverted) == base
 
     @pytest.mark.parametrize(
-        "test",
-        fixture.get("errorTests", []),
-        ids=[t["name"] for t in fixture.get("errorTests", [])],
+        "case", error_cases, ids=embed_test_ids(error_cases)
     )
-    def test_invert_embed_errors(self, test):
-        delta = delta_from_ops(test["delta"])
-        base = delta_from_ops(test["base"])
-        with pytest.raises(Exception):
-            delta.invert(base)
+    def test_invert_embed_errors(self, case):
+        handler, test = case
+        with registered_embed_handler(handler):
+            delta = delta_from_ops(test["delta"])
+            base = delta_from_ops(test["base"])
+            with pytest.raises(Exception):
+                delta.invert(base)
 
 
 # ── Delta helpers ──

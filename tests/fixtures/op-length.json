@@ -21,6 +21,16 @@
       "name": "insert embed",
       "op": { "insert": { "embed": 2 } },
       "expected": 1
+    },
+    {
+      "name": "insert emoji (surrogate pair)",
+      "op": { "insert": "😀" },
+      "expected": 2
+    },
+    {
+      "name": "insert text with emoji",
+      "op": { "insert": "a😀b" },
+      "expected": 4
     }
   ]
 }

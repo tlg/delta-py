@@ -56,5 +56,19 @@
       ],
       "verifyRoundTrip": true
     }
+    ,{
+      "name": "insert emoji",
+      "delta": [{ "retain": 1 }, { "insert": "😀" }],
+      "base": [{ "insert": "AB" }],
+      "expected": [{ "retain": 1 }, { "delete": 2 }],
+      "verifyRoundTrip": true
+    },
+    {
+      "name": "delete emoji",
+      "delta": [{ "retain": 1 }, { "delete": 2 }],
+      "base": [{ "insert": "A😀B" }],
+      "expected": [{ "retain": 1 }, { "insert": "😀" }],
+      "verifyRoundTrip": true
+    }
   ]
 }

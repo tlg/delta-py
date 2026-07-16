@@ -64,5 +64,17 @@
       "index": 4,
       "expected": 1
     }
+    ,{
+      "name": "insert emoji before position",
+      "delta": [{ "insert": "😀" }],
+      "index": 2,
+      "expected": 4
+    },
+    {
+      "name": "delete emoji before position",
+      "delta": [{ "delete": 2 }],
+      "index": 3,
+      "expected": 1
+    }
   ]
 }
