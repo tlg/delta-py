@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elium-delta"
+version = "0.0.1"
+description = "Rich text OT deltas with semantic cut/paste moves (quill-delta lineage)"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Whatever SA" }]
+maintainers = [{ name = "Antoine Perdaens", email = "a.perdaens@whatever-company.com" }]
+requires-python = ">=3.14"
+dependencies = []
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Text Processing :: Markup",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff==0.15.20"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pyright]
+include = ["delta/base.py", "delta/diff.py", "delta/embed.py", "delta/op.py"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+
+deprecateTypingAliases = true
+reportCallInDefaultInitializer = true
+reportImplicitOverride = true
+reportImplicitStringConcatenation = true
+reportPropertyTypeMismatch = true
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingTypeStubs = false
+reportUnreachable = true
+
+[tool.setuptools]
+packages = ["delta"]

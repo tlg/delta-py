@@ -8,11 +8,11 @@ from delta import Delta
 
 
 def test_immutability():
-    a1 = Delta().insert('A')
-    a2 = Delta().insert('A')
-    b1 = Delta().insert('B')
-    b2 = Delta().insert('B')
-    expected = Delta().retain(1).insert('B')
+    a1 = Delta().insert("A")
+    a2 = Delta().insert("A")
+    b1 = Delta().insert("B")
+    b2 = Delta().insert("B")
+    expected = Delta().retain(1).insert("B")
 
     assert a1.transform(b1, True) == expected
     assert a1 == a2
